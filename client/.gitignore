@@ -1,0 +1,57 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+build/
+.out/
+.next/
+.vercel/
+.cache/
+
+# Environment files
+.env
+.env.*.local
+*.local
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# OS-specific
+Thumbs.db
+ehthumbs.db
+desktop.ini
+
+# Bun (if used)
+.bun/
+
+# Test coverage
+coverage/
+
+# Cursor AI (if settings/extensions in future)
+.cursor/
+.cursor-settings.json
