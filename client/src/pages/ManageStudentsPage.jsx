@@ -146,70 +146,70 @@ const ManageStudentsPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Manage Students</h1>
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-background dark:bg-gray-950 min-h-screen transition-colors duration-300">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Manage Students</h1>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 transition-colors duration-300">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
                 <Users className="w-5 h-5 text-blue-600" />
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Total Students</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.totalStudents}</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Students</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalStudents}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 transition-colors duration-300">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
                 <CheckCircle className="w-5 h-5 text-green-600" />
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Active Students</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.activeStudents}</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-300">Active Students</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.activeStudents}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 transition-colors duration-300">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
                 <CreditCard className="w-5 h-5 text-green-600" />
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Paid Students</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.paidStudents}</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-300">Paid Students</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.paidStudents}</p>
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow-sm p-6">
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 transition-colors duration-300">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
                 <AlertCircle className="w-5 h-5 text-yellow-600" />
               </div>
             </div>
             <div className="ml-4">
-              <p className="text-sm font-medium text-gray-500">Pending Payments</p>
-              <p className="text-2xl font-bold text-gray-900">{stats.pendingStudents}</p>
+              <p className="text-sm font-medium text-gray-500 dark:text-gray-300">Pending Payments</p>
+              <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.pendingStudents}</p>
             </div>
           </div>
         </div>
       </div>
 
       {/* Search and Filters */}
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-8">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
@@ -249,7 +249,7 @@ const ManageStudentsPage = () => {
       </div>
 
       {/* Students Table */}
-      <div className="bg-white rounded-lg shadow-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">

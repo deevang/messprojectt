@@ -150,9 +150,9 @@ const ManageFeedbackPage = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 className="text-3xl font-bold text-gray-900 mb-8">Manage Feedback</h1>
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-background dark:bg-gray-950 min-h-screen transition-colors duration-300">
+      <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Manage Feedback</h1>
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-8 transition-colors duration-300">
         <div className="flex flex-col md:flex-row gap-4">
           <div className="flex-1">
             <div className="relative">
@@ -160,7 +160,7 @@ const ManageFeedbackPage = () => {
               <input
                 type="text"
                 placeholder="Search feedback..."
-                className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                className="pl-10 pr-4 py-2 w-full border border-gray-300 dark:border-gray-700 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-background dark:bg-gray-800 text-gray-900 dark:text-white"
               />
             </div>
           </div>
@@ -168,7 +168,7 @@ const ManageFeedbackPage = () => {
             <select
               value={sentimentFilter}
               onChange={(e) => setSentimentFilter(e.target.value)}
-              className="px-4 py-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+              className="px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md focus:ring-blue-500 focus:border-blue-500 bg-background dark:bg-gray-800 text-gray-900 dark:text-white"
             >
               <option value="">All Sentiments</option>
               <option value="positive">Positive</option>
@@ -187,7 +187,7 @@ const ManageFeedbackPage = () => {
           </div>
         </div>
       </div>
-      <div className="bg-white rounded-lg shadow-sm">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead className="bg-gray-50">
