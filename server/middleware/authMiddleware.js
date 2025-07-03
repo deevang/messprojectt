@@ -38,7 +38,7 @@ exports.isMessStaff = (req, res, next) => {
     return res.status(401).json({ error: 'Authentication required' });
   }
   
-  if (req.user.role !== 'admin' && req.user.role !== 'mess_staff') {
+  if (req.user.role !== 'admin' && req.user.role !== 'mess_staff' && req.user.role !== 'staff_head') {
     return res.status(403).json({ error: 'Mess staff access required' });
   }
   

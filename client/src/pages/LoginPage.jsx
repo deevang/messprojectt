@@ -58,7 +58,16 @@ const LoginPage = () => {
     try {
       const result = await login(formData);
       if (result.success) {
-        navigate('/');
+        const user = JSON.parse(localStorage.getItem('user'));
+        if (user.role === 'admin') {
+          navigate('/admin');
+        } else if (user.role === 'staff_head') {
+          navigate('/mess-staff');
+        } else if (user.role === 'student') {
+          navigate('/student');
+        } else {
+          navigate('/');
+        }
       }
     } catch (error) {
       console.error('Login error:', error);

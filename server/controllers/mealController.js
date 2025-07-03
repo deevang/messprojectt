@@ -219,8 +219,22 @@ exports.getMyBookings = async (req, res) => {
     const bookings = await Booking.find({ userId: req.user.userId })
       .populate('mealId')
       .sort({ date: -1 });
-    
-    res.json(bookings);
+
+    const now = new Date();
+    now.setHours(0, 0, 0, 0); // Start of today
+
+    const previousMeals = [];
+    const upcomingMeals = [];
+
+    bookings.forEach(booking => {
+      if (booking.date < now) {
+        previousMeals.push(booking);
+      } else {
+        upcomingMeals.push(booking);
+      }
+    });
+
+    res.json({ previousMeals, upcomingMeals });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

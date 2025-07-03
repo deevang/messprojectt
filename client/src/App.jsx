@@ -80,7 +80,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } />
         <Route path="/mess-staff" element={
-          <ProtectedRoute allowedRoles={['admin', 'mess_staff']}>
+          <ProtectedRoute allowedRoles={['admin', 'staff_head']}>
             <MessWorkerDashboard />
           </ProtectedRoute>
         } />

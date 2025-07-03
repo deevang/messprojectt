@@ -204,11 +204,12 @@ const RegisterPage = () => {
                 name="role"
                 value={formData.role}
                 onChange={handleChange}
-                className="block w-full px-3 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                className="block w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                required
               >
                 <option value="student">Student</option>
-                <option value="admin">Administrator</option>
-                <option value="mess_staff">Mess Staff</option>
+                <option value="staff_head">Head Staff</option>
+                <option value="admin">Admin</option>
               </select>
             </div>
 

@@ -70,7 +70,7 @@ const HomePage = () => {
   return (
     <div className="min-h-screen bg-background dark:bg-gray-950 transition-colors duration-300">
       {/* Navigation */}
-     
+
 
       {/* Hero Section */}
       <section className="relative overflow-hidden">
@@ -114,7 +114,7 @@ const HomePage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> 
 
       {/* Features Section */}
       <section className="py-24 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">

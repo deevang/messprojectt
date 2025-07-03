@@ -10,7 +10,8 @@ const MealsPage = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [bookingLoading, setBookingLoading] = useState(false);
-  const [myBookings, setMyBookings] = useState([]);
+  const [previousMeals, setPreviousMeals] = useState([]);
+  const [upcomingMeals, setUpcomingMeals] = useState([]);
 
   useEffect(() => {
     if (!user) return;
@@ -48,12 +49,14 @@ const MealsPage = () => {
     if (user.role === 'student') {
       mealsAPI.getMyBookings()
         .then(res => {
-          let data = res.data;
-          if (!Array.isArray(data)) data = [];
-          setMyBookings(data);
+          setPreviousMeals(res.data.previousMeals || []);
+          setUpcomingMeals(res.data.upcomingMeals || []);
+          console.log('Fetched previousMeals:', res.data.previousMeals);
+          console.log('Fetched upcomingMeals:', res.data.upcomingMeals);
         })
         .catch((err) => {
-          setMyBookings([]);
+          setPreviousMeals([]);
+          setUpcomingMeals([]);
           console.error('MyBookings API error:', err);
         });
     }
@@ -65,11 +68,9 @@ const MealsPage = () => {
     try {
       await mealsAPI.book(mealId, {});
       toast.success('Meal booked!');
-      // Refresh bookings
       const res = await mealsAPI.getMyBookings();
-      let data = res.data;
-      if (!Array.isArray(data)) data = [];
-      setMyBookings(data);
+      setPreviousMeals(res.data.previousMeals || []);
+      setUpcomingMeals(res.data.upcomingMeals || []);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Booking failed');
     } finally {
@@ -83,9 +84,8 @@ const MealsPage = () => {
       await bookingsAPI.delete(bookingId);
       toast.success('Booking cancelled!');
       const res = await mealsAPI.getMyBookings();
-      let data = res.data;
-      if (!Array.isArray(data)) data = [];
-      setMyBookings(data);
+      setPreviousMeals(res.data.previousMeals || []);
+      setUpcomingMeals(res.data.upcomingMeals || []);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Cancel failed');
     } finally {
@@ -97,8 +97,7 @@ const MealsPage = () => {
   if (loading) return <div className="p-8 text-center">Loading meals...</div>;
   if (error) return <div className="p-8 text-center text-red-500">{error}</div>;
 
-  // Helper: get booking for meal
-  const getBookingForMeal = (mealId) => myBookings.find(b => b.mealId && b.mealId._id === mealId && b.status === 'booked');
+  const getBookingForMeal = (mealId, bookingsArr) => bookingsArr.find(b => b.mealId && b.mealId._id === mealId && b.status === 'booked');
 
   return (
     <div className="p-8 max-w-3xl mx-auto bg-background dark:bg-gray-950 min-h-screen transition-colors duration-300">
@@ -122,7 +121,7 @@ const MealsPage = () => {
               </div>
               <div className="mt-2 md:mt-0 flex flex-col items-end">
                 {user.role === 'student' && (
-                  getBookingForMeal(meal._id) ? (
+                  getBookingForMeal(meal._id, upcomingMeals.concat(previousMeals)) ? (
                     <button
                       className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 dark:hover:bg-red-700 disabled:opacity-50"
                       onClick={() => handleCancel(getBookingForMeal(meal._id)._id)}
@@ -152,6 +151,57 @@ const MealsPage = () => {
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {user.role === 'student' && (
+        <div className="mt-12">
+          <h2 className="text-xl font-semibold mb-2">Upcoming Meals</h2>
+          {upcomingMeals.length === 0 ? (
+            <div className="text-gray-500">No upcoming meals booked.</div>
+          ) : (
+            <div className="space-y-4">
+              {upcomingMeals.map(booking => (
+                <div key={booking._id} className="bg-blue-50 rounded p-4 flex flex-col md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="font-semibold">{booking.mealId?.mealType ? (booking.mealId.mealType.charAt(0).toUpperCase() + booking.mealId.mealType.slice(1)) : ''} - {booking.mealId?.date ? new Date(booking.mealId.date).toLocaleDateString() : ''}</div>
+                    <div className="text-gray-600">{Array.isArray(booking.mealId?.items) ? booking.mealId.items.map(i => i.name).join(', ') : ''}</div>
+                    <div className="text-sm text-gray-500">Calories: {booking.mealId?.totalCalories || 0} | Price: ₹{booking.mealId?.price || 0} | {booking.mealId?.isVegetarian ? 'Veg' : 'Non-Veg'}</div>
+                  </div>
+                  <div className="mt-2 md:mt-0 flex flex-col items-end">
+                    <button
+                      className="bg-red-500 text-white px-4 py-2 rounded hover:bg-red-600 disabled:opacity-50"
+                      onClick={() => handleCancel(booking._id)}
+                      disabled={bookingLoading}
+                    >
+                      Cancel Booking
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {user.role === 'student' && (
+        <div className="mt-12">
+          <h2 className="text-xl font-semibold mb-2">Previous Meals</h2>
+          {previousMeals.length === 0 ? (
+            <div className="text-gray-500">No previous meals found.</div>
+          ) : (
+            <div className="space-y-4">
+              {previousMeals.map(booking => (
+                <div key={booking._id} className="bg-gray-100 rounded p-4 flex flex-col md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <div className="font-semibold">{booking.mealId?.mealType ? (booking.mealId.mealType.charAt(0).toUpperCase() + booking.mealId.mealType.slice(1)) : ''} - {booking.mealId?.date ? new Date(booking.mealId.date).toLocaleDateString() : ''}</div>
+                    <div className="text-gray-600">{Array.isArray(booking.mealId?.items) ? booking.mealId.items.map(i => i.name).join(', ') : ''}</div>
+                    <div className="text-sm text-gray-500">Calories: {booking.mealId?.totalCalories || 0} | Price: ₹{booking.mealId?.price || 0} | {booking.mealId?.isVegetarian ? 'Veg' : 'Non-Veg'}</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
