@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const User = require('../models/User');
 
 exports.register = async (req, res) => {
+  console.log('Register request body:', req.body);
   try {
     const { name, email, password, role, roomNumber, phoneNumber, messPlan, dietaryRestrictions, position, idProofType, idProofNumber } = req.body;
     
@@ -46,6 +47,7 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
+    console.log('Login request body:', req.body);
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found' });
@@ -68,6 +70,7 @@ exports.login = async (req, res) => {
       }
     });
   } catch (err) {
+    console.error('Login error:', err); // Add this line
     res.status(500).json({ error: err.message });
   }
 };
