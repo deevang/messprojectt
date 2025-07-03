@@ -120,75 +120,75 @@ const StudentDashboard = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="min-h-screen bg-background dark:bg-gray-950 flex items-center justify-center transition-colors duration-300">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-background dark:bg-gray-950 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome back, {user?.name}!</h1>
-          <p className="text-gray-600 mt-2">Manage your meals, bookings, and payments from your dashboard.</p>
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Welcome back, {user?.name}!</h1>
+          <p className="text-gray-600 dark:text-gray-300 mt-2">Manage your meals, bookings, and payments from your dashboard.</p>
         </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 transition-colors duration-300">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
                   <Utensils className="w-5 h-5 text-blue-600" />
                 </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Meals</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalMeals}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Meals</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalMeals}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 transition-colors duration-300">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
                   <Calendar className="w-5 h-5 text-green-600" />
                 </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">My Bookings</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalBookings}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-300">My Bookings</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalBookings}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 transition-colors duration-300">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-100 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
                   <CreditCard className="w-5 h-5 text-purple-600" />
                 </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Total Payments</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.totalPayments}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Payments</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalPayments}</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow-sm p-6">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 transition-colors duration-300">
             <div className="flex items-center">
               <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
                   <AlertCircle className="w-5 h-5 text-yellow-600" />
                 </div>
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500">Pending Payments</p>
-                <p className="text-2xl font-bold text-gray-900">{stats.pendingPayments}</p>
+                <p className="text-sm font-medium text-gray-500 dark:text-gray-300">Pending Payments</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.pendingPayments}</p>
               </div>
             </div>
           </div>
@@ -196,30 +196,30 @@ const StudentDashboard = () => {
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Available Meals */}
-          <div className="bg-white rounded-lg shadow-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">Available Meals</h2>
-              <p className="text-sm text-gray-600">Book your meals for today and upcoming days</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Available Meals</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Book your meals for today and upcoming days</p>
             </div>
             <div className="p-6">
               {meals.length > 0 ? (
                 <div className="space-y-4">
                   {meals.map((meal) => (
-                    <div key={meal._id} className="border border-gray-200 rounded-lg p-4">
+                    <div key={meal._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium text-gray-900 capitalize">{meal.mealType}</h3>
-                          <p className="text-sm text-gray-600">
+                          <h3 className="font-medium text-gray-900 dark:text-white capitalize">{meal.mealType}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
                             {new Date(meal.date).toLocaleDateString()}
                           </p>
-                          <p className="text-sm text-gray-500">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
                             {meal.items.map(item => item.name).join(', ')}
                           </p>
                           <div className="flex items-center mt-2 space-x-4">
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-gray-600 dark:text-gray-300">
                               ₹{meal.price}
                             </span>
-                            <span className="text-sm text-gray-600">
+                            <span className="text-sm text-gray-600 dark:text-gray-300">
                               {meal.totalCalories} cal
                             </span>
                             {meal.isVegetarian && (
@@ -250,20 +250,20 @@ const StudentDashboard = () => {
           </div>
 
           {/* My Bookings */}
-          <div className="bg-white rounded-lg shadow-sm">
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h2 className="text-lg font-semibold text-gray-900">My Bookings</h2>
-              <p className="text-sm text-gray-600">Track your meal bookings and consumption</p>
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">My Bookings</h2>
+              <p className="text-sm text-gray-600 dark:text-gray-300">Track your meal bookings and consumption</p>
             </div>
             <div className="p-6">
               {bookings.length > 0 ? (
                 <div className="space-y-4">
                   {bookings.slice(0, 5).map((booking) => (
-                    <div key={booking._id} className="border border-gray-200 rounded-lg p-4">
+                    <div key={booking._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
                       <div className="flex justify-between items-start">
                         <div>
-                          <h3 className="font-medium text-gray-900 capitalize">{booking.mealType}</h3>
-                          <p className="text-sm text-gray-600">
+                          <h3 className="font-medium text-gray-900 dark:text-white capitalize">{booking.mealType}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-300">
                             {new Date(booking.date).toLocaleDateString()}
                           </p>
                           <div className="mt-2">
@@ -294,10 +294,10 @@ const StudentDashboard = () => {
         </div>
 
         {/* Recent Payments */}
-        <div className="mt-8 bg-white rounded-lg shadow-sm">
+        <div className="mt-8 bg-white dark:bg-gray-900 rounded-lg shadow-sm">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-900">Recent Payments</h2>
-            <p className="text-sm text-gray-600">Track your payment history and status</p>
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Recent Payments</h2>
+            <p className="text-sm text-gray-600 dark:text-gray-300">Track your payment history and status</p>
           </div>
           <div className="p-6">
             {payments.length > 0 ? (

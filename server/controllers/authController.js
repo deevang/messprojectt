@@ -3,6 +3,7 @@ const bcrypt = require('bcrypt');
 const User = require('../models/User');
 
 exports.register = async (req, res) => {
+  console.log('Register request body:', req.body);
   try {
     const { name, email, password, role, roomNumber, phoneNumber, messPlan, dietaryRestrictions } = req.body;
     
@@ -43,17 +44,21 @@ exports.register = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
+    console.log('Login request body:', req.body);
     const { email, password } = req.body;
     const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ error: 'User not found' });
-    
+    if (!user) {
+      console.log('User not found');
+      return res.status(404).json({ error: 'User not found' });
+    }
     const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) return res.status(401).json({ error: 'Invalid credentials' });
-
+    if (!isMatch) {
+      console.log('Invalid credentials');
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
     const token = jwt.sign({ userId: user._id, role: user.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    
-    res.json({ 
-      token, 
+    res.json({
+      token,
       role: user.role,
       user: {
         id: user._id,
@@ -65,6 +70,7 @@ exports.login = async (req, res) => {
       }
     });
   } catch (err) {
+    console.error('Login error:', err); // Add this line
     res.status(500).json({ error: err.message });
   }
 };
