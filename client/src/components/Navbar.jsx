@@ -58,7 +58,7 @@ const Navbar = () => {
                 >
                   Dashboard
                 </Link>
-                {(user.role === 'admin' || user.role === 'mess_staff') && (
+                {(user.role === 'admin' || user.role === 'mess_staff' || user.role === 'staff_head') && (
                   <Link 
                     to="/mess-staff" 
                     className="text-gray-600 hover:text-gray-900 px-3 py-2 rounded-md text-sm font-medium transition-colors"
@@ -178,7 +178,7 @@ const Navbar = () => {
                   >
                     Dashboard
                   </Link>
-                  {(user.role === 'admin' || user.role === 'mess_staff') && (
+                  {(user.role === 'admin' || user.role === 'mess_staff' || user.role === 'staff_head') && (
                     <Link
                       to="/mess-staff"
                       className="text-gray-600 hover:text-gray-900 block px-3 py-2 rounded-md text-base font-medium transition-colors"

@@ -119,4 +119,14 @@ export const healthAPI = {
   check: () => api.get('/health'),
 };
 
+// Staff API (Admin only)
+export const staffAPI = {
+  getAll: () => api.get('/auth/staff'),
+  updateStaff: (id, staffData) => api.put(`/auth/staff/${id}`, staffData),
+  markSalaryPaid: (id, amount) => api.post(`/auth/staff/${id}/pay-salary`, { amount }),
+  getAttendance: (month, year) => api.get('/auth/staff-attendance', { params: { month, year } }),
+  updateAttendance: (id, date, present) => api.patch(`/auth/staff/${id}/attendance`, { date, present }),
+  getMyAttendance: (month, year) => api.get('/auth/my-attendance', { params: { month, year } }),
+};
+
 export default api;

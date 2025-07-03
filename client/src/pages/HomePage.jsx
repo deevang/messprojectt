@@ -72,14 +72,14 @@ const HomePage = () => {
       {/* Navigation */}
       <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-2">
+          {/* <div className="flex justify-between items-center h-16"> */}
+            {/* <div className="flex items-center space-x-2">
               <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                 <Utensils className="w-5 h-5 text-white" />
               </div>
               <span className="text-xl font-bold text-gray-900">MessManager</span>
-            </div>
-            <div className="flex items-center space-x-4">
+            </div> */}
+            {/* <div className="flex items-center space-x-4">
               {user ? (
                 <Link
                   to={user.role === 'admin' ? '/admin' : '/student'}
@@ -98,7 +98,7 @@ const HomePage = () => {
                 </>
               )}
             </div>
-          </div>
+          </div> */}
         </div>
       </nav>
 
@@ -116,8 +116,8 @@ const HomePage = () => {
               Streamline your mess operations with our comprehensive management system. 
               From meal booking to payment tracking, we've got everything covered.
             </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              {user ? (
+            {/* <div className="flex flex-col sm:flex-row gap-4 justify-center">
+             
                 <Link
                   to={user.role === 'admin' ? '/admin' : '/student'}
                   className="btn-primary btn-lg"
@@ -125,25 +125,14 @@ const HomePage = () => {
                   Access Dashboard
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
-              ) : (
-                <>
-                  <Link to="/register" className="btn-primary btn-lg">
-                    Start Free Trial
-                    <ArrowRight className="w-4 h-4 ml-2" />
-                  </Link>
-                  <button className="btn-outline btn-lg flex items-center">
-                    <Play className="w-4 h-4 mr-2" />
-                    Watch Demo
-                  </button>
-                </>
-              )}
-            </div>
+              
+            </div> */}
           </div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="py-16 bg-white">
+      {/* <section className="py-16 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
@@ -157,7 +146,7 @@ const HomePage = () => {
             ))}
           </div>
         </div>
-      </section>
+      </section> */}
 
       {/* Features Section */}
       <section className="py-24 bg-gray-50">
