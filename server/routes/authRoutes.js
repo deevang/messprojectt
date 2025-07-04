@@ -4,7 +4,7 @@ const { register, login, getProfile, updateProfile, changePassword, resetPasswor
 const { verifyToken, isAdmin } = require('../middleware/authMiddleware');
 const { isMessStaff } = require('../middleware/authMiddleware');
 
-router.post('/register', verifyToken, isMessStaff, register);
+router.post('/register', register);
 router.post('/login', login);
 router.get('/profile', verifyToken, getProfile);
 router.put('/profile', verifyToken, updateProfile);

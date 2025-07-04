@@ -28,17 +28,8 @@ exports.register = async (req, res) => {
       idProofNumber
     });
 
-    const token = jwt.sign({ userId: newUser._id, role: newUser.role }, process.env.JWT_SECRET, { expiresIn: '7d' });
-    
     res.status(201).json({ 
-      message: 'User registered successfully',
-      token,
-      user: {
-        id: newUser._id,
-        name: newUser.name,
-        email: newUser.email,
-        role: newUser.role
-      }
+      message: 'User registered successfully'
     });
   } catch (err) {
     res.status(400).json({ error: err.message });

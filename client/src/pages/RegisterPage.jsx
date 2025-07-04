@@ -108,7 +108,7 @@ const RegisterPage = () => {
     try {
       const result = await register(formData);
       if (result.success) {
-        navigate('/');
+        navigate('/login');
       }
     } catch (error) {
       console.error('Registration error:', error);
