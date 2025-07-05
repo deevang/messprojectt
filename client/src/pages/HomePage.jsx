@@ -1,5 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { weeklyMealPlanAPI } from '../services/api';
+import { useState, useEffect } from 'react';
 import { 
   Utensils, 
   Users, 
@@ -15,6 +17,8 @@ import {
 
 const HomePage = () => {
   const { user } = useAuth();
+  const [weeklyPlan, setWeeklyPlan] = useState([]);
+  const [planLoading, setPlanLoading] = useState(false);
 
   const features = [
     {
@@ -66,6 +70,22 @@ const HomePage = () => {
     "24/7 customer support",
     "Regular menu updates"
   ];
+
+  const fetchWeeklyPlan = async () => {
+    setPlanLoading(true);
+    try {
+      const res = await weeklyMealPlanAPI.getWeeklyPlan();
+      setWeeklyPlan(res.data.meals || []);
+    } catch (err) {
+      setWeeklyPlan([]);
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchWeeklyPlan();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background dark:bg-gray-950 transition-colors duration-300">
@@ -142,8 +162,78 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* Benefits Section */}
+      {/* Weekly Meal Plan Section */}
       <section className="py-24 bg-white dark:bg-gray-900 transition-colors duration-300">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
+              This Week's Meal Plan
+            </h2>
+            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
+              Check out our delicious weekly menu and plan your meals in advance.
+            </p>
+          </div>
+          {planLoading ? (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+              <p className="text-gray-600 dark:text-gray-300 mt-4">Loading meal plan...</p>
+            </div>
+          ) : weeklyPlan.length > 0 ? (
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-900">
+                    <tr>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Day</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Breakfast</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Lunch</th>
+                      <th className="px-6 py-4 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Dinner</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {weeklyPlan.map(day => (
+                      <tr key={day.day} className="hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">{day.day}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">{day.breakfast || 'TBD'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">{day.lunch || 'TBD'}</td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">{day.dinner || 'TBD'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {user && user.role === 'student' && (
+                <div className="px-6 py-4 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex flex-col sm:flex-row gap-4 justify-center">
+                    <Link
+                      to="/student"
+                      className="inline-flex items-center bg-blue-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                    >
+                      Book Your Meals
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Link>
+                    <Link
+                      to="/meals"
+                      className="inline-flex items-center bg-green-600 text-white px-6 py-2 rounded-lg font-semibold hover:bg-green-700 transition-colors"
+                    >
+                      View All Meals
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </Link>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <Utensils className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <p className="text-gray-600 dark:text-gray-300">No meal plan available at the moment.</p>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Benefits Section */}
+      <section className="py-24 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
             <div>

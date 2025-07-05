@@ -4,16 +4,21 @@ const Booking = require('../models/Booking');
 
 exports.createPayment = async (req, res) => {
   try {
-    const { userId, amount, paymentType, dueDate, month, year, description } = req.body;
+    const { userId, amount, paymentType, dueDate, month, year, description, mealId, transactionId, paymentMethod, status, bookingId } = req.body;
     
     const payment = await Payment.create({
       userId,
       amount,
-      paymentType,
-      dueDate: new Date(dueDate),
+      paymentType: paymentType || (mealId ? 'daily' : undefined),
+      dueDate: dueDate ? new Date(dueDate) : undefined,
       month,
       year,
-      description
+      description,
+      transactionId,
+      paymentMethod,
+      status,
+      mealId,
+      bookingId
     });
     
     res.status(201).json(payment);

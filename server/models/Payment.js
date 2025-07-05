@@ -12,6 +12,8 @@ const paymentSchema = new mongoose.Schema({
   year: { type: Number, required: true },
   description: { type: String },
   transactionId: { type: String },
+  mealId: { type: mongoose.Schema.Types.ObjectId, ref: 'Meal' },
+  bookingId: { type: mongoose.Schema.Types.ObjectId, ref: 'Booking' },
   mealsIncluded: { type: Number, default: 0 },
   discount: { type: Number, default: 0 }
 }, { timestamps: true });

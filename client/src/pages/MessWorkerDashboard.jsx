@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { staffAPI, authAPI } from '../services/api';
+import { staffAPI, authAPI, paymentsAPI, bookingsAPI, weeklyMealPlanAPI } from '../services/api';
 import toast from 'react-hot-toast';
 import { User, Phone, Briefcase, IndianRupee, Edit2, CheckCircle2, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -22,6 +22,12 @@ const MessWorkerDashboard = () => {
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ name: '', email: '', password: '', phoneNumber: '', position: '', idProofType: '', idProofNumber: '', role: 'mess_staff' });
   const [addLoading, setAddLoading] = useState(false);
+  const [recentPayments, setRecentPayments] = useState([]);
+  const [recentBookings, setRecentBookings] = useState([]);
+  const [weeklyPlan, setWeeklyPlan] = useState([]);
+  const [editWeeklyPlan, setEditWeeklyPlan] = useState([]);
+  const [editingPlan, setEditingPlan] = useState(false);
+  const [planLoading, setPlanLoading] = useState(false);
 
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'staff_head') {
@@ -30,6 +36,9 @@ const MessWorkerDashboard = () => {
     }
     if (user?.role === 'staff_head') {
       fetchMyProfile();
+      fetchRecentPayments();
+      fetchRecentBookings();
+      fetchWeeklyPlan();
     }
   }, [attendanceMonth]);
 
@@ -177,6 +186,56 @@ const MessWorkerDashboard = () => {
       toast.error(err.response?.data?.error || 'Failed to add staff');
     } finally {
       setAddLoading(false);
+    }
+  };
+
+  const fetchRecentPayments = async () => {
+    try {
+      const res = await paymentsAPI.getAll({ limit: 5, sort: '-createdAt' });
+      setRecentPayments(res.data.payments || []);
+    } catch (err) {
+      setRecentPayments([]);
+    }
+  };
+
+  const fetchRecentBookings = async () => {
+    try {
+      const res = await bookingsAPI.getAll({ limit: 5, sort: '-date' });
+      setRecentBookings(res.data.bookings || []);
+    } catch (err) {
+      setRecentBookings([]);
+    }
+  };
+
+  const fetchWeeklyPlan = async () => {
+    setPlanLoading(true);
+    try {
+      const res = await weeklyMealPlanAPI.getWeeklyPlan();
+      setWeeklyPlan(res.data.meals || []);
+      setEditWeeklyPlan(res.data.meals || []);
+    } catch (err) {
+      setWeeklyPlan([]);
+      setEditWeeklyPlan([]);
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
+  const handlePlanChange = (idx, field, value) => {
+    setEditWeeklyPlan(prev => prev.map((day, i) => i === idx ? { ...day, [field]: value } : day));
+  };
+
+  const handleSavePlan = async () => {
+    setPlanLoading(true);
+    try {
+      await weeklyMealPlanAPI.updateWeeklyPlan(editWeeklyPlan);
+      setWeeklyPlan(editWeeklyPlan);
+      setEditingPlan(false);
+      toast.success('Weekly meal plan updated!');
+    } catch (err) {
+      toast.error('Failed to update meal plan');
+    } finally {
+      setPlanLoading(false);
     }
   };
 

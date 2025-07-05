@@ -60,6 +60,7 @@ export const mealsAPI = {
   cancelBooking: (bookingId) => api.put(`/meals/cancel-booking/${bookingId}`),
   getMyBookings: () => api.get('/meals/my-bookings'),
   getStats: () => api.get('/meals/stats'),
+  createDefaultWeek: () => api.post('/meals/create-default-week'),
 };
 
 // Bookings API
@@ -71,6 +72,9 @@ export const bookingsAPI = {
   getByDate: (date) => api.get(`/bookings/date/${date}`),
   getByUser: () => api.get('/bookings/my-bookings'),
   markAsConsumed: (id) => api.put(`/bookings/${id}/consume`),
+  bookTodayFromPlan: () => api.post('/bookings/book-today-from-plan'),
+  bookWeekFromPlan: () => api.post('/bookings/book-week-from-plan'),
+  getRecentWithPayments: () => api.get('/bookings/recent-with-payments'),
 };
 
 // Payments API
@@ -83,6 +87,7 @@ export const paymentsAPI = {
   getStats: () => api.get('/payments/stats'),
   process: (paymentData) => api.post('/payments/process', paymentData),
   generateInvoice: (id) => api.get(`/payments/invoice/${id}`),
+  createMealPayment: (data) => api.post('/payments', data),
 };
 
 // Feedback API
@@ -127,6 +132,16 @@ export const staffAPI = {
   getAttendance: (month, year) => api.get('/auth/staff-attendance', { params: { month, year } }),
   updateAttendance: (id, date, present) => api.patch(`/auth/staff/${id}/attendance`, { date, present }),
   getMyAttendance: (month, year) => api.get('/auth/my-attendance', { params: { month, year } }),
+};
+
+export const weeklyMealPlanAPI = {
+  getWeeklyPlan: () => api.get('/meals/weekly-plan'),
+  updateWeeklyPlan: (meals) => api.put('/meals/weekly-plan', { meals }),
+};
+
+export const expenseAPI = {
+  addExpense: (data) => api.post('/meals/expenses', data),
+  getExpenses: (params) => api.get('/meals/expenses', { params }),
 };
 
 export default api;

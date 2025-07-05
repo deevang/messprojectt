@@ -1,6 +1,8 @@
 const Meal = require('../models/Meal');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
+const WeeklyMealPlan = require('../models/WeeklyMealPlan');
+const Expense = require('../models/Expense');
 
 exports.getAllMeals = async (req, res) => {
   try {
@@ -259,5 +261,207 @@ exports.getMealStats = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+exports.getWeeklyMealPlan = async (req, res) => {
+  try {
+    console.log('getWeeklyMealPlan called by user:', req.user);
+    let plan = await WeeklyMealPlan.findOne();
+    if (!plan) {
+      plan = await WeeklyMealPlan.create({
+        meals: [
+          { 
+            day: 'Monday', 
+            breakfast: 'Poha with Tea, Fruits', 
+            lunch: 'Rice, Dal, Mixed Vegetables, Curd', 
+            dinner: 'Roti, Paneer Curry, Salad' 
+          },
+          { 
+            day: 'Tuesday', 
+            breakfast: 'Bread Omelette, Milk', 
+            lunch: 'Khichdi, Papad, Pickle', 
+            dinner: 'Rice, Chicken Curry, Vegetables' 
+          },
+          { 
+            day: 'Wednesday', 
+            breakfast: 'Upma, Coffee', 
+            lunch: 'Roti, Dal, Mixed Vegetables, Curd', 
+            dinner: 'Rice, Egg Curry, Salad' 
+          },
+          { 
+            day: 'Thursday', 
+            breakfast: 'Idli Sambar, Chutney', 
+            lunch: 'Rice, Dal, Mixed Vegetables, Curd', 
+            dinner: 'Roti, Paneer Curry, Salad' 
+          },
+          { 
+            day: 'Friday', 
+            breakfast: 'Cornflakes with Milk, Banana', 
+            lunch: 'Biryani, Raita, Salad', 
+            dinner: 'Roti, Dal, Mixed Vegetables' 
+          },
+          { 
+            day: 'Saturday', 
+            breakfast: 'Paratha with Curd, Tea', 
+            lunch: 'Rice, Dal, Mixed Vegetables, Curd', 
+            dinner: 'Rice, Fish Curry, Vegetables' 
+          },
+          { 
+            day: 'Sunday', 
+            breakfast: 'Puri Bhaji, Tea', 
+            lunch: 'Special Thali (Rice, Dal, 2 Vegetables, Curd, Sweet)', 
+            dinner: 'Roti, Dal, Mixed Vegetables, Salad' 
+          },
+        ],
+        updatedBy: req.user ? req.user.userId : null
+      });
+    }
+    res.json(plan);
+  } catch (err) {
+    console.error('getWeeklyMealPlan error:', err.stack || err, '\nRequest user:', req.user, '\nRequest headers:', req.headers);
+    res.status(500).json({ error: 'Failed to fetch or create weekly meal plan: ' + err.message });
+  }
+};
+
+exports.updateWeeklyMealPlan = async (req, res) => {
+  try {
+    if (req.user.role !== 'staff_head') {
+      return res.status(403).json({ error: 'Only head staff can update the weekly meal plan.' });
+    }
+    const { meals } = req.body;
+    let plan = await WeeklyMealPlan.findOne();
+    if (!plan) {
+      plan = new WeeklyMealPlan();
+    }
+    plan.meals = meals;
+    plan.updatedBy = req.user.userId;
+    plan.updatedAt = new Date();
+    await plan.save();
+    res.json(plan);
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+exports.addExpense = async (req, res) => {
+  try {
+    const { amount, description, category, date } = req.body;
+    if (!amount || !description || !category || !date) {
+      return res.status(400).json({ error: 'All fields are required for expense.' });
+    }
+    if (!req.user || !req.user.userId) {
+      return res.status(401).json({ error: 'Authentication required.' });
+    }
+    const expense = await Expense.create({
+      amount,
+      description,
+      category,
+      date,
+      addedBy: req.user.userId
+    });
+    res.status(201).json(expense);
+  } catch (err) {
+    console.error('addExpense error:', err.stack || err, '\nRequest user:', req.user, '\nRequest body:', req.body);
+    res.status(400).json({ error: 'Failed to add expense: ' + err.message });
+  }
+};
+
+exports.getExpenses = async (req, res) => {
+  try {
+    console.log('getExpenses called by user:', req.user);
+    if (!req.user) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+    const { all } = req.query;
+    console.log('getExpenses query params:', req.query);
+    if (all === 'true' && req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Only admin can view all expenses.' });
+    }
+    let query = all === 'true' ? {} : { addedBy: req.user.userId };
+    console.log('getExpenses final query:', query);
+    const expenses = await Expense.find(query).sort({ date: -1 });
+    console.log('getExpenses found:', expenses.length, 'expenses');
+    res.json(expenses);
+  } catch (err) {
+    console.error('getExpenses error:', err.stack || err, '\nRequest user:', req.user, '\nRequest query:', req.query);
+    res.status(500).json({ error: 'Failed to fetch expenses: ' + err.message });
+  }
+};
+
+exports.createDefaultMealsForWeek = async (req, res) => {
+  try {
+    if (req.user.role !== 'staff_head') {
+      return res.status(403).json({ error: 'Only head staff can create default meals.' });
+    }
+
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay() + 1); // Monday
+    startOfWeek.setHours(0, 0, 0, 0);
+
+    // Create just 3 sample meals for today and next 2 days
+    const sampleMeals = [
+      {
+        date: new Date(today),
+        mealType: 'breakfast',
+        items: [{ name: 'Poha with Tea, Fruits', calories: 300 }],
+        price: 50,
+        isVegetarian: true,
+        maxCapacity: 100,
+        description: 'Light and healthy breakfast',
+        isAvailable: true
+      },
+      {
+        date: new Date(today.getTime() + 24 * 60 * 60 * 1000), // Tomorrow
+        mealType: 'lunch',
+        items: [{ name: 'Rice, Dal, Mixed Vegetables, Curd', calories: 600 }],
+        price: 80,
+        isVegetarian: true,
+        maxCapacity: 100,
+        description: 'Complete vegetarian lunch',
+        isAvailable: true
+      },
+      {
+        date: new Date(today.getTime() + 2 * 24 * 60 * 60 * 1000), // Day after tomorrow
+        mealType: 'dinner',
+        items: [{ name: 'Roti, Paneer Curry, Salad', calories: 500 }],
+        price: 70,
+        isVegetarian: true,
+        maxCapacity: 100,
+        description: 'Protein-rich dinner',
+        isAvailable: true
+      }
+    ];
+
+    // Check if meals already exist for the next 3 days
+    const existingMeals = await Meal.find({
+      date: { 
+        $gte: today, 
+        $lt: new Date(today.getTime() + 3 * 24 * 60 * 60 * 1000) 
+      }
+    });
+
+    if (existingMeals.length > 0) {
+      return res.status(400).json({ error: 'Sample meals for the next 3 days already exist. Please delete existing meals first.' });
+    }
+
+    // Create sample meals
+    const createdMeals = await Meal.insertMany(
+      sampleMeals.map(meal => ({
+        ...meal,
+        preparedBy: req.user.userId,
+        currentBookings: 0
+      }))
+    );
+
+    res.status(201).json({
+      message: 'Sample meals created successfully',
+      count: createdMeals.length,
+      meals: createdMeals
+    });
+  } catch (err) {
+    console.error('createDefaultMealsForWeek error:', err);
+    res.status(500).json({ error: 'Failed to create default meals: ' + err.message });
   }
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { mealsAPI, aiAPI } from '../services/api';
+import { mealsAPI, aiAPI, weeklyMealPlanAPI } from '../services/api';
 import toast from 'react-hot-toast';
-import { Plus, Trash2, Edit, Zap } from 'lucide-react';
+import { Plus, Trash2, Edit, Zap, Calendar } from 'lucide-react';
 
 const ManageMealsPage = () => {
   const [meals, setMeals] = useState([]);
@@ -22,6 +22,7 @@ const ManageMealsPage = () => {
   // Fetch meals and group by week
   useEffect(() => {
     fetchMeals();
+    fetchWeeklyPlan();
   }, []);
 
   const fetchMeals = async () => {
@@ -59,9 +60,45 @@ const ManageMealsPage = () => {
     }
     return 1 + Math.ceil((firstThursday - tmp) / 604800000);
   }
+
+  const fetchWeeklyPlan = async () => {
+    setPlanLoading(true);
+    try {
+      const res = await weeklyMealPlanAPI.getWeeklyPlan();
+      setWeeklyPlan(res.data.meals || []);
+      setEditWeeklyPlan(res.data.meals || []);
+    } catch (err) {
+      setWeeklyPlan([]);
+      setEditWeeklyPlan([]);
+    } finally {
+      setPlanLoading(false);
+    }
+  };
+
+  const handlePlanChange = (idx, field, value) => {
+    setEditWeeklyPlan(prev => prev.map((day, i) => i === idx ? { ...day, [field]: value } : day));
+  };
+
+  const handleSavePlan = async () => {
+    setPlanLoading(true);
+    try {
+      await weeklyMealPlanAPI.updateWeeklyPlan(editWeeklyPlan);
+      setWeeklyPlan(editWeeklyPlan);
+      setEditingPlan(false);
+      toast.success('Weekly meal plan updated!');
+    } catch (err) {
+      toast.error('Failed to update meal plan');
+    } finally {
+      setPlanLoading(false);
+    }
+  };
   const [isEditing, setIsEditing] = useState(null);
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
+  const [weeklyPlan, setWeeklyPlan] = useState([]);
+  const [editWeeklyPlan, setEditWeeklyPlan] = useState([]);
+  const [editingPlan, setEditingPlan] = useState(false);
+  const [planLoading, setPlanLoading] = useState(false);
 
   // (Removed duplicate fetchMeals and useEffect)
 
@@ -181,6 +218,87 @@ const ManageMealsPage = () => {
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-background dark:bg-gray-950 min-h-screen transition-colors duration-300">
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Manage Meals</h1>
 
+      {/* Weekly Meal Plan Section */}
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-8 transition-colors duration-300">
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-white flex items-center">
+            <Calendar className="w-5 h-5 mr-2" />
+            Weekly Standard Meals
+          </h2>
+          <div className="flex gap-2">
+            {editingPlan ? (
+              <>
+                <button 
+                  type="button" 
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors" 
+                  onClick={handleSavePlan}
+                  disabled={planLoading}
+                >
+                  {planLoading ? 'Saving...' : 'Save'}
+                </button>
+                <button 
+                  type="button" 
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400 transition-colors" 
+                  onClick={() => { setEditingPlan(false); setEditWeeklyPlan(weeklyPlan); }}
+                >
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button 
+                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors" 
+                onClick={() => setEditingPlan(true)}
+              >
+                Edit Plan
+              </button>
+            )}
+          </div>
+        </div>
+        {planLoading ? (
+          <div className="text-center py-8">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+            <p className="text-gray-600 dark:text-gray-300 mt-2">Loading meal plan...</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-800">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Day</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Breakfast</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Lunch</th>
+                  <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Dinner</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                {(editingPlan ? editWeeklyPlan : weeklyPlan).map((day, idx) => (
+                  <tr key={day.day} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
+                    <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">{day.day}</td>
+                    {['breakfast', 'lunch', 'dinner'].map(mealType => (
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200" key={mealType}>
+                        {editingPlan ? (
+                          <input
+                            className="w-full border border-gray-300 dark:border-gray-600 rounded px-2 py-1 bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
+                            value={editWeeklyPlan[idx][mealType]}
+                            onChange={e => handlePlanChange(idx, mealType, e.target.value)}
+                            placeholder={`Enter ${mealType}`}
+                          />
+                        ) : (
+                          day[mealType] || 'TBD'
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">
+          This is the standard weekly meal plan that students can view and book from.
+        </p>
+      </div>
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Form */}
         <div className="lg:col-span-1">
@@ -269,8 +387,13 @@ const ManageMealsPage = () => {
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500 capitalize">{meal.type}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">₹{meal.price}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                          <button onClick={() => handleEdit(meal)} className="text-blue-600 hover:text-blue-900"><Edit className="w-5 h-5"/></button>
-                          <button onClick={() => handleDelete(meal._id)} className="text-red-600 hover:text-red-900"><Trash2 className="w-5 h-5"/></button>
+                          {/* Only show edit and delete buttons if user.role === 'staff_head' */}
+                          {user.role === 'staff_head' && (
+                            <>
+                              <button onClick={() => handleEdit(meal)} className="text-blue-600 hover:text-blue-900"><Edit className="w-5 h-5"/></button>
+                              <button onClick={() => handleDelete(meal._id)} className="text-red-600 hover:text-red-900"><Trash2 className="w-5 h-5"/></button>
+                            </>
+                          )}
                         </td>
                       </tr>
                     ))

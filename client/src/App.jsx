@@ -15,6 +15,7 @@ import MessWorkerDashboard from './pages/MessWorkerDashboard';
 import MealsPage from './pages/MealsPage';
 import StudentsPage from './pages/StudentsPage';
 import ProfilePage from './pages/ProfilePage';
+import HeadStaffDashboard from './pages/HeadStaffDashboard';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -102,6 +103,11 @@ const AppRoutes = () => {
         <Route path="/profile" element={
           <ProtectedRoute>
             <ProfilePage />
+          </ProtectedRoute>
+        } />
+        <Route path="/head-staff" element={
+          <ProtectedRoute allowedRoles={['staff_head']}>
+            <HeadStaffDashboard />
           </ProtectedRoute>
         } />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -34,6 +34,7 @@ app.use('/api/students', studentRoutes);
 app.use('/api/bookings', bookingRoutes);
 app.use('/api/payments', paymentRoutes);
 app.use('/api/feedback', feedbackRoutes);
+
 app.use('/api/ai', aiRoutes);
 
 // Health check endpoint

@@ -54,7 +54,7 @@ const Navbar = () => {
             {user && (
               <>
                 <Link 
-                  to={user.role === 'admin' ? '/admin' : '/student'} 
+                  to={user.role === 'admin' ? '/admin' : user.role === 'staff_head' ? '/head-staff' : '/student'} 
                   className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 >
                   Dashboard
@@ -67,12 +67,14 @@ const Navbar = () => {
                     Staff Dashboard
                   </Link>
                 )}
-                <Link 
-                  to="/meals" 
-                  className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                >
-                  Meals
-                </Link>
+                {user.role !== 'admin' && (
+                  <Link 
+                    to="/meals" 
+                    className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                  >
+                    Meals
+                  </Link>
+                )}
                 {user.role === 'admin' && (
                   <Link 
                     to="/students" 
@@ -176,7 +178,7 @@ const Navbar = () => {
               {user && (
                 <>
                   <Link
-                    to={user.role === 'admin' ? '/admin' : '/student'}
+                    to={user.role === 'admin' ? '/admin' : user.role === 'staff_head' ? '/head-staff' : '/student'}
                     className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white block px-3 py-2 rounded-md text-base font-medium transition-colors"
                     onClick={() => setIsOpen(false)}
                   >
@@ -191,13 +193,15 @@ const Navbar = () => {
                       Staff Dashboard
                     </Link>
                   )}
-                  <Link
-                    to="/meals"
-                    className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white block px-3 py-2 rounded-md text-base font-medium transition-colors"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    Meals
-                  </Link>
+                  {user.role !== 'admin' && (
+                    <Link
+                      to="/meals"
+                      className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white block px-3 py-2 rounded-md text-base font-medium transition-colors"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      Meals
+                    </Link>
+                  )}
                   {user.role === 'admin' && (
                     <Link
                       to="/students"

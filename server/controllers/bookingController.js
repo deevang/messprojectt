@@ -1,6 +1,8 @@
 const Booking = require('../models/Booking');
 const Meal = require('../models/Meal');
 const User = require('../models/User');
+const WeeklyMealPlan = require('../models/WeeklyMealPlan');
+const Payment = require('../models/Payment');
 
 exports.createBooking = async (req, res) => {
   try {
@@ -19,7 +21,11 @@ exports.createBooking = async (req, res) => {
       return res.status(400).json({ error: 'Meal is fully booked' });
     }
     
-    const existingBooking = await Booking.findOne({ userId: req.user.userId, mealId });
+    const existingBooking = await Booking.findOne({ 
+      userId: req.user.userId, 
+      mealId,
+      status: { $nin: ['cancelled', 'deleted'] } // Allow rebooking if previously cancelled
+    });
     if (existingBooking) {
       return res.status(400).json({ error: 'You have already booked this meal' });
     }
@@ -115,12 +121,16 @@ exports.deleteBooking = async (req, res) => {
       return res.status(403).json({ error: 'Not authorized to delete this booking' });
     }
     
-    await Booking.findByIdAndDelete(req.params.id);
+    // Mark as cancelled instead of deleting
+    await Booking.findByIdAndUpdate(req.params.id, { 
+      status: 'cancelled',
+      cancelledAt: new Date()
+    });
     
     // Update meal booking count
     await Meal.findByIdAndUpdate(booking.mealId, { $inc: { currentBookings: -1 } });
     
-    res.json({ message: 'Booking deleted successfully' });
+    res.json({ message: 'Booking cancelled successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -144,7 +154,10 @@ exports.getBookingsByDate = async (req, res) => {
 
 exports.getBookingsByUser = async (req, res) => {
   try {
-    const bookings = await Booking.find({ userId: req.user.userId })
+    const bookings = await Booking.find({ 
+      userId: req.user.userId,
+      status: { $nin: ['cancelled', 'deleted'] } // Don't show cancelled bookings
+    })
       .populate('mealId')
       .sort({ date: -1 });
     
@@ -174,5 +187,102 @@ exports.markAsConsumed = async (req, res) => {
     res.json(updatedBooking);
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+};
+
+// Book today's set from the weekly plan
+exports.bookTodayFromPlan = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    // Find all available meals for today
+    const meals = await Meal.find({
+      date: { $gte: today, $lt: new Date(today.getTime() + 24 * 60 * 60 * 1000) },
+      isAvailable: true
+    });
+    if (!meals.length) return res.status(404).json({ error: 'No meals available for today' });
+    // For each meal, create a booking if not already booked/cancelled
+    const bookings = [];
+    for (const meal of meals) {
+      const existing = await Booking.findOne({
+        userId,
+        mealId: meal._id,
+        status: { $nin: ['cancelled', 'deleted'] }
+      });
+      if (!existing) {
+        const booking = await Booking.create({
+          userId,
+          mealId: meal._id,
+          date: meal.date,
+          mealType: meal.mealType,
+          status: 'pending',
+          specialRequests: '',
+          price: meal.price
+        });
+        await Meal.findByIdAndUpdate(meal._id, { $inc: { currentBookings: 1 } });
+        bookings.push(booking);
+      }
+    }
+    if (!bookings.length) return res.status(400).json({ error: 'All meals for today are already booked.' });
+    res.status(201).json({ bookings, paymentRequired: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Book the week's set from the weekly plan
+exports.bookWeekFromPlan = async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const plan = await WeeklyMealPlan.findOne();
+    if (!plan) return res.status(404).json({ error: 'No weekly meal plan found' });
+    // Create a booking for each day (status: pending)
+    const bookings = await Promise.all(plan.meals.map(async (day) => {
+      return Booking.create({
+        userId,
+        date: new Date(), // You may want to set the correct date for each day
+        mealType: 'day',
+        status: 'pending',
+        specialRequests: '',
+        price: 0 // Set price as needed
+      });
+    }));
+    res.status(201).json({ bookings, paymentRequired: true });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Admin/Head Staff: Get recent bookings with payment info
+exports.getRecentBookingsWithPayments = async (req, res) => {
+  try {
+    // Only admin or head staff can access
+    if (!req.user || (req.user.role !== 'admin' && req.user.role !== 'staff_head')) {
+      return res.status(403).json({ error: 'Only admin or head staff can view this data.' });
+    }
+    // Get recent bookings (limit 20)
+    const bookings = await Booking.find({})
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .populate('userId', 'name email')
+      .lean();
+    // Get payments for these bookings
+    const bookingIds = bookings.map(b => b._id);
+    const payments = await Payment.find({ bookingId: { $in: bookingIds } }).lean();
+    // Map payments by bookingId
+    const paymentMap = {};
+    payments.forEach(p => { paymentMap[p.bookingId?.toString()] = p; });
+    // Combine data
+    const result = bookings.map(b => ({
+      student: b.userId?.name || 'Unknown',
+      meals: 1, // 1 per booking (customize if needed)
+      amount: paymentMap[b._id.toString()]?.amount || 0,
+      date: b.date,
+      time: b.createdAt,
+    }));
+    res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
