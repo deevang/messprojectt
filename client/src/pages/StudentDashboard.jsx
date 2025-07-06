@@ -1,22 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { mealsAPI, bookingsAPI, paymentsAPI, weeklyMealPlanAPI } from '../services/api';
-import { 
-  Utensils, 
-  Calendar, 
-  CreditCard, 
-  User, 
-  Clock, 
-  Star,
-  Plus,
-  CheckCircle,
-  XCircle,
-  AlertCircle,
-  TrendingUp,
-  Users,
-  DollarSign
-} from 'lucide-react';
-import toast from 'react-hot-toast';
+import { mealsAPI, paymentsAPI } from '../services/api';
+
+const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
 const StudentDashboard = () => {
   const { user } = useAuth();
@@ -24,61 +10,23 @@ const StudentDashboard = () => {
   const [bookings, setBookings] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [stats, setStats] = useState({
-    totalMeals: 0,
-    totalBookings: 0,
-    totalPayments: 0,
-    pendingPayments: 0
-  });
-  const [weekMeals, setWeekMeals] = useState([]);
-  const [planLoading, setPlanLoading] = useState(false);
 
   useEffect(() => {
-    fetchDashboardData();
-    fetchWeekMeals();
-  }, [user]);
-
-  const fetchDashboardData = async () => {
-    try {
-      setLoading(true);
-      const [mealsRes, bookingsRes, paymentsRes] = await Promise.all([
-        mealsAPI.getAll({ limit: 5 }),
-        bookingsAPI.getByUser(),
-        paymentsAPI.getByUser()
-      ]);
-
-      setMeals(mealsRes.data.meals || []);
-      setBookings(bookingsRes.data || []);
-      setPayments(paymentsRes.data || []);
-
-      // Calculate stats
-      const pendingPayments = paymentsRes.data.filter(p => p.status === 'pending').length;
-      setStats({
-        totalMeals: mealsRes.data.total || 0,
-        totalBookings: bookingsRes.data.length,
-        totalPayments: paymentsRes.data.length,
-        pendingPayments
-      });
-    } catch (error) {
-      console.error('Error fetching dashboard data:', error);
-      toast.error('Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchWeekMeals = async () => {
-    try {
-      // Get meals for the current week
-      const today = new Date();
-      const startOfWeek = new Date(today);
-      startOfWeek.setDate(today.getDate() - today.getDay()); // Sunday
-      const endOfWeek = new Date(today);
-      endOfWeek.setDate(today.getDate() + (6 - today.getDay())); // Saturday
-      const startDate = startOfWeek.toISOString().slice(0, 10);
-      const endDate = endOfWeek.toISOString().slice(0, 10);
-      const res = await mealsAPI.getAll({ startDate, endDate });
-      let data = res.data.meals || res.data;
+    if (!user) return;
+    setLoading(true);
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const endOfWeek = new Date(today);
+    endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
+    const startDate = startOfWeek.toISOString().slice(0, 10);
+    const endDate = endOfWeek.toISOString().slice(0, 10);
+    Promise.all([
+      mealsAPI.getAll({ startDate, endDate }),
+      mealsAPI.getMyBookings(),
+      paymentsAPI.getByUser()
+    ]).then(([mealsRes, bookingsRes, paymentsRes]) => {
+      let data = mealsRes.data.meals || mealsRes.data;
       if (!Array.isArray(data)) data = [];
       data.sort((a, b) => {
         const dateA = new Date(a.date);
@@ -86,105 +34,53 @@ const StudentDashboard = () => {
         if (dateA - dateB !== 0) return dateA - dateB;
         return (a.mealType || '').localeCompare(b.mealType || '');
       });
-      setWeekMeals(data);
-    } catch (err) {
-      setWeekMeals([]);
-    }
+      setMeals(data);
+      setBookings([...(bookingsRes.data.upcomingMeals || []), ...(bookingsRes.data.previousMeals || [])]);
+      setPayments(paymentsRes.data || []);
+    }).catch(() => {
+      setMeals([]);
+      setBookings([]);
+      setPayments([]);
+    }).finally(() => setLoading(false));
+  }, [user]);
+
+  // Helpers
+  const getDateForDay = (dayName) => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const targetDayIdx = daysOfWeek.indexOf(dayName);
+    const targetDate = new Date(startOfWeek);
+    targetDate.setDate(startOfWeek.getDate() + targetDayIdx);
+    return targetDate.toISOString().slice(0, 10);
+  };
+  const getBookingsForDay = (dateStr) => bookings.filter(b => b.mealId && b.mealId.date && b.mealId.date.slice(0, 10) === dateStr);
+  const getDayBookingStatus = (meals, bookings) => {
+    const mealTypes = ['breakfast', 'lunch', 'dinner'].filter(type => meals[type]);
+    if (mealTypes.length === 0) return 'none';
+    if (mealTypes.every(type => bookings.some(b => b.mealId && b.mealId.mealType === type && b.status === 'booked'))) return 'booked';
+    if (mealTypes.some(type => bookings.some(b => b.mealId && b.mealId.mealType === type && b.status === 'pending'))) return 'pending';
+    return 'none';
   };
 
-  const handleBookMeal = async (mealId) => {
-    try {
-      await mealsAPI.book(mealId);
-      toast.success('Meal booked successfully!');
-      fetchDashboardData(); // Refresh data
-    } catch (error) {
-      const message = error.response?.data?.error || 'Failed to book meal';
-      toast.error(message);
-    }
-  };
+  // Stats
+  const totalMeals = meals.length;
+  const totalBookings = bookings.filter(b => b.status === 'booked').length;
+  const totalPayments = payments.filter(p => p.status === 'completed').length;
+  const pendingPayments = payments.filter(p => p.status === 'pending').length;
 
-  const handleCancelBooking = async (bookingId) => {
-    try {
-      await mealsAPI.cancelBooking(bookingId);
-      toast.success('Booking cancelled successfully!');
-      fetchDashboardData(); // Refresh data
-    } catch (error) {
-      const message = error.response?.data?.error || 'Failed to cancel booking';
-      toast.error(message);
-    }
-  };
-
-  const handleBookToday = async () => {
-    try {
-      const res = await bookingsAPI.bookTodayFromPlan();
-      if (res.data.paymentRequired) {
-        toast.success('Proceed to payment to complete booking.');
-        // Redirect to payment page or open payment modal here
-      } else {
-        toast.success('Today\'s meal booked!');
+  // Weekly Meal Plan structure
+  const weekMeals = daysOfWeek.map(day => {
+    const dayMeals = meals.filter(m => daysOfWeek[new Date(m.date).getDay()] === day);
+    return {
+      day,
+      meals: {
+        breakfast: dayMeals.find(m => m.mealType === 'breakfast'),
+        lunch: dayMeals.find(m => m.mealType === 'lunch'),
+        dinner: dayMeals.find(m => m.mealType === 'dinner'),
       }
-      fetchDashboardData();
-    } catch (error) {
-      const message = error.response?.data?.error || 'Failed to book today\'s meal';
-      toast.error(message);
-    }
-  };
-
-  const handleBookWeek = async () => {
-    try {
-      const res = await bookingsAPI.bookWeekFromPlan();
-      if (res.data.paymentRequired) {
-        toast.success('Proceed to payment to complete booking.');
-        // Redirect to payment page or open payment modal here
-      } else {
-        toast.success('Meals for the week booked!');
-      }
-      fetchDashboardData();
-    } catch (error) {
-      const message = error.response?.data?.error || 'Failed to book meals for the week';
-      toast.error(message);
-    }
-  };
-
-  const getStatusBadge = (status) => {
-    const statusConfig = {
-      booked: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', icon: <Clock className="w-4 h-4" /> },
-      consumed: { color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', icon: <CheckCircle className="w-4 h-4" /> },
-      cancelled: { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: <XCircle className="w-4 h-4" /> }
     };
-    
-    const config = statusConfig[status] || statusConfig.booked;
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        {config.icon}
-        <span className="ml-1 capitalize">{status}</span>
-      </span>
-    );
-  };
-
-  const getPaymentStatusBadge = (status) => {
-    const statusConfig = {
-      pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200', icon: <AlertCircle className="w-4 h-4" /> },
-      completed: { color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', icon: <CheckCircle className="w-4 h-4" /> },
-      failed: { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: <XCircle className="w-4 h-4" /> }
-    };
-    
-    const config = statusConfig[status] || statusConfig.pending;
-    return (
-      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${config.color}`}>
-        {config.icon}
-        <span className="ml-1 capitalize">{status}</span>
-      </span>
-    );
-  };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-background dark:bg-gray-950 flex items-center justify-center transition-colors duration-300">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-      </div>
-    );
-  }
+  });
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
@@ -194,222 +90,127 @@ const StudentDashboard = () => {
           <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">Welcome back, {user?.name}!</h1>
           <p className="text-gray-600 dark:text-gray-300">Manage your meals, bookings, and payments from your dashboard.</p>
         </div>
-
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-blue-100 dark:bg-blue-900 rounded-lg flex items-center justify-center">
-                  <Utensils className="w-5 h-5 text-blue-600" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Meals</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalMeals}</p>
-              </div>
-            </div>
+            <div className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Meals</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalMeals}</div>
           </div>
-
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-green-100 dark:bg-green-900 rounded-lg flex items-center justify-center">
-                  <Calendar className="w-5 h-5 text-green-600" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-300">My Bookings</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalBookings}</p>
-              </div>
-            </div>
+            <div className="text-sm font-medium text-gray-500 dark:text-gray-300">My Bookings</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalBookings}</div>
           </div>
-
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-purple-100 dark:bg-purple-900 rounded-lg flex items-center justify-center">
-                  <CreditCard className="w-5 h-5 text-purple-600" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Payments</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalPayments}</p>
-              </div>
-            </div>
+            <div className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Payments</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{totalPayments}</div>
           </div>
-
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <div className="w-8 h-8 bg-yellow-100 dark:bg-yellow-900 rounded-lg flex items-center justify-center">
-                  <AlertCircle className="w-5 h-5 text-yellow-600" />
-                </div>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-500 dark:text-gray-300">Pending Payments</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.pendingPayments}</p>
-              </div>
-            </div>
+            <div className="text-sm font-medium text-gray-500 dark:text-gray-300">Pending Payments</div>
+            <div className="text-2xl font-bold text-gray-900 dark:text-white">{pendingPayments}</div>
           </div>
         </div>
-
-        {/* Weekly Meal Plan (Read-only) */}
+        {/* Weekly Meal Plan Table (Read-only) */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-8 transition-colors duration-300">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Weekly Standard Meals</h2>
-            <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">View the standard meal plan for the week and book your meals</p>
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Weekly Meal Plan</h2>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">View your meal plan and booking status for the week</p>
           </div>
-          {planLoading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : (
-            <>
-              <div className="overflow-x-auto mb-6">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Day</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breakfast</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Lunch</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dinner</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {weekMeals.length === 0 ? (
-                      <tr><td colSpan="4" className="text-center py-8 text-gray-500 dark:text-gray-400">No meals available for this week.</td></tr>
-                    ) : weekMeals.map(meal => (
-                      <tr key={meal._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">{new Date(meal.date).toLocaleDateString()}<br/>{meal.mealType}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">{meal.items?.map(item => item.name).join(', ') || meal.description}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">₹{meal.price}</td>
-                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">{meal.isVegetarian ? 'Veg' : 'Non-Veg'}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              <div className="flex gap-4">
-                <button 
-                  className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-3 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-md" 
-                  onClick={handleBookToday}
-                >
-                  Book Today's Meal
-                </button>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-          {/* My Bookings */}
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-            <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white">My Bookings</h2>
-              <p className="text-sm text-gray-600 dark:text-gray-300">Track your meal bookings and consumption</p>
-            </div>
-            <div className="p-6">
-              {bookings.length > 0 ? (
-                <div className="space-y-4">
-                  {bookings.slice(0, 5).map((booking) => (
-                    <div key={booking._id} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-medium text-gray-900 dark:text-white capitalize">{booking.mealType}</h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-300">
-                            {new Date(booking.date).toLocaleDateString()}
-                          </p>
-                          <div className="mt-2">
-                            {getStatusBadge(booking.status)}
-                          </div>
-                        </div>
-                        {booking.status === 'booked' && (
-                          <button
-                            onClick={() => handleCancelBooking(booking._id)}
-                            className="bg-gradient-to-r from-red-500 to-red-600 text-white px-4 py-2 rounded-lg hover:from-red-600 hover:to-red-700 transition-all duration-200 font-medium shadow-md"
-                          >
-                            Cancel
-                          </button>
+          <div className="overflow-x-auto mb-6">
+            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+              <thead className="bg-gray-50 dark:bg-gray-700">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Day</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breakfast</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Lunch</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dinner</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                </tr>
+              </thead>
+              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                {daysOfWeek.map(day => {
+                  const dateStr = getDateForDay(day);
+                  const dayMeals = meals.filter(m => daysOfWeek[new Date(m.date).getDay()] === day);
+                  const mealsObj = {
+                    breakfast: dayMeals.find(m => m.mealType === 'breakfast'),
+                    lunch: dayMeals.find(m => m.mealType === 'lunch'),
+                    dinner: dayMeals.find(m => m.mealType === 'dinner'),
+                  };
+                  const bookingsForDay = getBookingsForDay(dateStr);
+                  const status = getDayBookingStatus(mealsObj, bookingsForDay);
+                  return (
+                    <tr key={day} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{day}</td>
+                      {['breakfast', 'lunch', 'dinner'].map(type => (
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300" key={type}>
+                          {mealsObj[type]?.items?.map(item => item.name).join(', ') || mealsObj[type]?.description || <span className="text-gray-400">-</span>}
+                        </td>
+                      ))}
+                      <td className="px-6 py-4">
+                        {status === 'booked' ? (
+                          <span className="text-green-600 font-semibold">Booked</span>
+                        ) : status === 'pending' ? (
+                          <span className="text-yellow-600 font-semibold">Pending Payment</span>
+                        ) : (
+                          <span className="text-gray-400">Not Booked</span>
                         )}
-                      </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </div>
+        {/* My Bookings */}
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-8 transition-colors duration-300">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">My Bookings</h2>
+          {daysOfWeek.map(day => {
+            const dateStr = getDateForDay(day);
+            const bookingsForDay = getBookingsForDay(dateStr).filter(b => b.status === 'booked');
+            if (bookingsForDay.length === 0) return null;
+            return (
+              <div key={day} className="bg-blue-50 rounded p-4 mb-4">
+                <div className="font-semibold mb-2">{day} ({dateStr})</div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-2 mb-2">
+                  {bookingsForDay.map(b => (
+                    <div key={b._id} className="bg-white rounded p-2 shadow">
+                      <div className="font-bold capitalize">{b.mealId?.mealType}</div>
+                      <div className="text-gray-600 text-sm">{Array.isArray(b.mealId?.items) ? b.mealId.items.map(i => i.name).join(', ') : ''}</div>
+                      <div className="text-xs text-gray-500">Calories: {b.mealId?.totalCalories || 0} | Price: ₹{b.mealId?.price || 0} | {b.mealId?.isVegetarian ? 'Veg' : 'Non-Veg'}</div>
                     </div>
                   ))}
                 </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Calendar className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <p className="text-gray-500">No bookings yet</p>
-                  <p className="text-sm text-gray-400">Book your first meal to get started</p>
-                </div>
-              )}
-            </div>
-          </div>
+              </div>
+            );
+          })}
         </div>
-
         {/* Recent Payments */}
-        <div className="mt-8 bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700">
-          <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-            <h2 className="text-xl font-bold text-gray-900 dark:text-white">Recent Payments</h2>
-            <p className="text-sm text-gray-600 dark:text-gray-300">Track your payment history and status</p>
-          </div>
-          <div className="p-6">
-            {payments.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Payment
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Amount
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
-                        Status
-                      </th>
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-8 transition-colors duration-300">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent Payments</h2>
+          {payments.length === 0 ? (
+            <div className="text-gray-500">No payments yet</div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {payments.slice(0, 5).map(payment => (
+                    <tr key={payment._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td className="px-6 py-4">₹{payment.amount}</td>
+                      <td className="px-6 py-4">{new Date(payment.createdAt).toLocaleDateString()}</td>
+                      <td className="px-6 py-4">{payment.status.charAt(0).toUpperCase() + payment.status.slice(1)}</td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                                          {payments.slice(0, 5).map((payment) => (
-                        <tr key={payment._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div>
-                              <div className="text-sm font-medium text-gray-900 dark:text-white">
-                                {payment.paymentType} Payment
-                              </div>
-                              <div className="text-sm text-gray-500 dark:text-gray-400">
-                                {payment.description || 'Mess fee payment'}
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 dark:text-white">₹{payment.amount}</div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="text-sm text-gray-900 dark:text-white">
-                              {new Date(payment.createdAt).toLocaleDateString()}
-                            </div>
-                          </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            {getPaymentStatusBadge(payment.status)}
-                          </td>
-                        </tr>
-                      ))}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="text-center py-8">
-                <CreditCard className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">No payments yet</p>
-                <p className="text-sm text-gray-400">Your payment history will appear here</p>
-              </div>
-            )}
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
+const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 const AdminDashboard = () => {
   const { user } = useAuth();
   const [recentStudents, setRecentStudents] = useState([]);
@@ -50,6 +52,11 @@ const AdminDashboard = () => {
 
   const [recentBookings, setRecentBookings] = useState([]);
 
+  // State for meals chart (read-only)
+  const [meals, setMeals] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [mealsChartLoading, setMealsChartLoading] = useState(false);
+
   const handleEditMeal = (idx) => {
     setEditMealIdx(idx);
     setEditMeal({
@@ -82,6 +89,7 @@ const AdminDashboard = () => {
     fetchExpenses();
     fetchStaff();
     fetchRecentBookingsWithPayments();
+    fetchWeeklyMealsChart();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -166,6 +174,55 @@ const AdminDashboard = () => {
     }
   };
 
+  // Fetch meals for the weekly chart (read-only)
+  const fetchWeeklyMealsChart = async () => {
+    if (!user) return;
+    setMealsChartLoading(true);
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const endOfWeek = new Date(today);
+    endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
+    const startDate = startOfWeek.toISOString().slice(0, 10);
+    const endDate = endOfWeek.toISOString().slice(0, 10);
+    
+    try {
+      const [mealsRes, bookingsRes] = await Promise.all([
+        mealsAPI.getAll({ startDate, endDate }),
+        bookingsAPI.getAll({ startDate, endDate })
+      ]);
+      
+      let data = mealsRes.data.meals || mealsRes.data;
+      if (!Array.isArray(data)) data = [];
+      data.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        if (dateA - dateB !== 0) return dateA - dateB;
+        return (a.mealType || '').localeCompare(b.mealType || '');
+      });
+      setMeals(data);
+      setBookings(bookingsRes.data.bookings || bookingsRes.data || []);
+    } catch (err) {
+      setMeals([]);
+      setBookings([]);
+    } finally {
+      setMealsChartLoading(false);
+    }
+  };
+
+  // Helpers for meals chart
+  const getDateForDay = (dayName) => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const targetDayIdx = daysOfWeek.indexOf(dayName);
+    const targetDate = new Date(startOfWeek);
+    targetDate.setDate(startOfWeek.getDate() + targetDayIdx);
+    return targetDate.toISOString().slice(0, 10);
+  };
+
+  const getBookingsForDay = (dateStr) => bookings.filter(b => b.mealId && b.mealId.date && b.mealId.date.slice(0, 10) === dateStr);
+
   useEffect(() => {
     setTotalProfit(stats.totalRevenue - (totalExpenses + totalSalaries));
   }, [stats.totalRevenue, totalExpenses, totalSalaries]);
@@ -204,6 +261,80 @@ const AdminDashboard = () => {
               View Feedback
             </Link>
           </div>
+        </div>
+
+        {/* Weekly Meals Chart - Read Only for Admin */}
+        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-8">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Weekly Meals Chart</h2>
+            <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">View meals managed by Head Staff (Read Only)</p>
+          </div>
+          
+          {mealsChartLoading ? (
+            <div className="flex justify-center items-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : (
+            <div className="overflow-x-auto mb-6">
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Day</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breakfast</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Lunch</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dinner</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bookings</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {daysOfWeek.map(day => {
+                    const dateStr = getDateForDay(day);
+                    const dayMeals = meals.filter(m => daysOfWeek[new Date(m.date).getDay()] === day);
+                    const mealsObj = {
+                      breakfast: dayMeals.find(m => m.mealType === 'breakfast'),
+                      lunch: dayMeals.find(m => m.mealType === 'lunch'),
+                      dinner: dayMeals.find(m => m.mealType === 'dinner'),
+                    };
+                    const bookingsForDay = getBookingsForDay(dateStr);
+                    
+                    return (
+                      <tr key={day} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{day}</td>
+                        {['breakfast', 'lunch', 'dinner'].map(type => (
+                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300" key={type}>
+                            {mealsObj[type] ? (
+                              <div>
+                                <div className="font-medium">
+                                  {mealsObj[type].items?.map(item => item.name).join(', ') || mealsObj[type].description}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  ₹{mealsObj[type].price} | {mealsObj[type].isVegetarian ? 'Veg' : 'Non-Veg'}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">No meal set</span>
+                            )}
+                          </td>
+                        ))}
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">
+                          {bookingsForDay.length > 0 ? (
+                            <div>
+                              <div className="font-medium">{bookingsForDay.length} bookings</div>
+                              <div className="text-xs text-gray-500">
+                                {bookingsForDay.filter(b => b.status === 'booked').length} confirmed
+                              </div>
+                            </div>
+                          ) : (
+                            <span className="text-gray-400">No bookings</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
 
         {/* Recent Bookings (Combined) */}

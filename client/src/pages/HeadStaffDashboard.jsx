@@ -3,6 +3,8 @@ import { useAuth } from '../contexts/AuthContext';
 import { paymentsAPI, weeklyMealPlanAPI, expenseAPI, mealsAPI, bookingsAPI } from '../services/api';
 import toast from 'react-hot-toast';
 
+const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 const HeadStaffDashboard = () => {
   const { user } = useAuth();
   const [weeklyPlan, setWeeklyPlan] = useState([]);
@@ -17,6 +19,26 @@ const HeadStaffDashboard = () => {
   const [creatingDefaultMeals, setCreatingDefaultMeals] = useState(false);
   const [availableMeals, setAvailableMeals] = useState([]);
   const [mealsLoading, setMealsLoading] = useState(false);
+  const [weeklyMeals, setWeeklyMeals] = useState([]);
+  const [weeklyMealsLoading, setWeeklyMealsLoading] = useState(false);
+  const [editingMeal, setEditingMeal] = useState(null);
+  const [addMealModal, setAddMealModal] = useState({ open: false, mealData: {} });
+
+  // New state for meals chart
+  const [meals, setMeals] = useState([]);
+  const [bookings, setBookings] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editingMealId, setEditingMealId] = useState(null);
+  const [newMealForm, setNewMealForm] = useState({
+    date: '',
+    mealType: 'breakfast',
+    description: '',
+    items: [{ name: '', calories: 0 }],
+    price: 0,
+    maxCapacity: 50,
+    isVegetarian: true,
+    isAvailable: true
+  });
 
   useEffect(() => {
     fetchWeeklyPlan();
@@ -24,6 +46,7 @@ const HeadStaffDashboard = () => {
     fetchRecentBookings();
     fetchExpenses();
     fetchAvailableMeals();
+    fetchWeeklyMealsChart();
   }, []);
 
   const fetchWeeklyPlan = async () => {
@@ -133,6 +156,124 @@ const HeadStaffDashboard = () => {
     }
   };
 
+  // Fetch meals for the weekly chart
+  const fetchWeeklyMealsChart = async () => {
+    if (!user) return;
+    setLoading(true);
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const endOfWeek = new Date(today);
+    endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
+    const startDate = startOfWeek.toISOString().slice(0, 10);
+    const endDate = endOfWeek.toISOString().slice(0, 10);
+    
+    try {
+      const [mealsRes, bookingsRes] = await Promise.all([
+        mealsAPI.getAll({ startDate, endDate }),
+        bookingsAPI.getAll({ startDate, endDate })
+      ]);
+      
+      let data = mealsRes.data.meals || mealsRes.data;
+      if (!Array.isArray(data)) data = [];
+      data.sort((a, b) => {
+        const dateA = new Date(a.date);
+        const dateB = new Date(b.date);
+        if (dateA - dateB !== 0) return dateA - dateB;
+        return (a.mealType || '').localeCompare(b.mealType || '');
+      });
+      setMeals(data);
+      setBookings(bookingsRes.data.bookings || bookingsRes.data || []);
+    } catch (err) {
+      setMeals([]);
+      setBookings([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Helpers for meals chart
+  const getDateForDay = (dayName) => {
+    const today = new Date();
+    const startOfWeek = new Date(today);
+    startOfWeek.setDate(today.getDate() - today.getDay());
+    const targetDayIdx = daysOfWeek.indexOf(dayName);
+    const targetDate = new Date(startOfWeek);
+    targetDate.setDate(startOfWeek.getDate() + targetDayIdx);
+    return targetDate.toISOString().slice(0, 10);
+  };
+
+  const getBookingsForDay = (dateStr) => bookings.filter(b => b.mealId && b.mealId.date && b.mealId.date.slice(0, 10) === dateStr);
+
+  const handleAddMeal = async (e) => {
+    e.preventDefault();
+    try {
+      await mealsAPI.create(newMealForm);
+      toast.success('Meal added successfully!');
+      setNewMealForm({
+        date: '',
+        mealType: 'breakfast',
+        description: '',
+        items: [{ name: '', calories: 0 }],
+        price: 0,
+        maxCapacity: 50,
+        isVegetarian: true,
+        isAvailable: true
+      });
+      fetchWeeklyMealsChart();
+      setAddMealModal({ open: false, mealData: {} });
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to add meal');
+    }
+  };
+
+  const handleEditMeal = async (mealId, updatedData) => {
+    try {
+      await mealsAPI.update(mealId, updatedData);
+      toast.success('Meal updated successfully!');
+      setEditingMealId(null);
+      fetchWeeklyMealsChart();
+      setAddMealModal({ open: false, mealData: {} });
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Failed to update meal');
+    }
+  };
+
+  const handleDeleteMeal = async (mealId) => {
+    if (window.confirm('Are you sure you want to delete this meal?')) {
+      try {
+        await mealsAPI.delete(mealId);
+        toast.success('Meal deleted successfully!');
+        fetchWeeklyMealsChart();
+      } catch (err) {
+        toast.error(err.response?.data?.error || 'Failed to delete meal');
+      }
+    }
+  };
+
+  const addMealItem = () => {
+    setNewMealForm(prev => ({
+      ...prev,
+      items: [...prev.items, { name: '', calories: 0 }]
+    }));
+  };
+
+  const removeMealItem = (index) => {
+    setNewMealForm(prev => ({
+      ...prev,
+      items: prev.items.filter((_, i) => i !== index)
+    }));
+  };
+
+  const updateMealItem = (index, field, value) => {
+    setNewMealForm(prev => ({
+      ...prev,
+      items: prev.items.map((item, i) => 
+        i === index ? { ...item, [field]: value } : item
+      )
+    }));
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -141,149 +282,126 @@ const HeadStaffDashboard = () => {
           <p className="text-gray-600 dark:text-gray-300">Manage meals, expenses, and view bookings</p>
         </div>
 
-        {/* Weekly Meal Plan - Always show table, edit in-place */}
+        {/* Weekly Meals Chart - Editable by Head Staff */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-8">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Weekly Standard Meals</h2>
-              <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">Edit the standard meal plan for the week</p>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Weekly Meals Chart</h2>
+              <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">Manage meals for the week - Add, edit, and delete meals</p>
             </div>
-            <button 
-              onClick={handleCreateDefaultMeals}
-              disabled={creatingDefaultMeals}
-              className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-lg hover:from-green-600 hover:to-green-700 disabled:opacity-50 transition-all duration-200 font-medium shadow-md"
-            >
-              {creatingDefaultMeals ? 'Creating...' : 'Create Sample Meals'}
-            </button>
+            <div className="flex gap-3">
+              <button 
+                onClick={handleCreateDefaultMeals}
+                disabled={creatingDefaultMeals}
+                className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-green-700 disabled:opacity-50 transition-all duration-200 font-medium shadow-md"
+              >
+                {creatingDefaultMeals ? 'Creating...' : 'Create Sample'}
+              </button>
+              <button 
+                onClick={() => {
+                  setNewMealForm({
+                    date: '',
+                    mealType: 'breakfast',
+                    description: '',
+                    items: [{ name: '', calories: 0 }],
+                    price: 0,
+                    maxCapacity: 50,
+                    isVegetarian: true,
+                    isAvailable: true
+                  });
+                  setAddMealModal({ open: true, mealData: {} });
+                }}
+                className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-md"
+              >
+                Add Meal
+              </button>
+            </div>
           </div>
-          {planLoading ? (
+          
+          {loading ? (
             <div className="flex justify-center items-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
             </div>
           ) : (
-            <>
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                  <thead className="bg-gray-50 dark:bg-gray-700">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Day</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breakfast</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Lunch</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dinner</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                    {(editingPlan ? editWeeklyPlan : weeklyPlan).map((day, idx) => (
-                      <tr key={day.day} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">{day.day}</td>
-                        {['breakfast', 'lunch', 'dinner'].map(mealType => (
-                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300" key={mealType}>
-                            {editingPlan ? (
-                              <input
-                                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                                value={editWeeklyPlan[idx][mealType]}
-                                onChange={e => handlePlanChange(idx, mealType, e.target.value)}
-                              />
-                            ) : (
-                              <span className={day[mealType] ? 'text-gray-900 dark:text-white' : 'text-gray-400 dark:text-gray-500'}>
-                                {day[mealType] || 'Not set'}
-                              </span>
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-              {user.role === 'staff_head' && (
-                editingPlan ? (
-                  <div className="flex gap-3 mt-6">
-                    <button 
-                      type="button" 
-                      className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-md" 
-                      onClick={handleSavePlan}
-                    >
-                      Save Changes
-                    </button>
-                    <button 
-                      type="button" 
-                      className="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-all duration-200 font-medium" 
-                      onClick={() => { setEditingPlan(false); setEditWeeklyPlan(weeklyPlan); }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                ) : (
-                  <button 
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-md mt-6" 
-                    onClick={() => setEditingPlan(true)}
-                  >
-                    Edit Plan
-                  </button>
-                )
-              )}
-            </>
-          )}
-          <p className="text-sm text-gray-500 dark:text-gray-400 mt-4">Students can select their preferred meals for the week from this standard menu.</p>
-        </div>
-
-        {/* Available Meals */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Available Meals</h2>
-            <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">These are the actual meals available for booking by students</p>
-          </div>
-          {mealsLoading ? (
-            <div className="flex justify-center items-center py-8">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto mb-6">
               <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Meal Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Items</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Price</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Capacity</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bookings</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Day</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breakfast</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Lunch</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dinner</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {availableMeals.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="text-center py-8 text-gray-500 dark:text-gray-400">
-                        <div className="flex flex-col items-center">
-                          <svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.746 0 3.332.477 4.5 1.253v13C19.832 18.477 18.246 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                          </svg>
-                          <p>No meals available</p>
-                          <p className="text-sm">Create sample meals to get started</p>
-                        </div>
-                      </td>
-                    </tr>
-                  ) : availableMeals.map(meal => (
-                    <tr key={meal._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{new Date(meal.date).toLocaleDateString()}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white capitalize">{meal.mealType}</td>
-                      <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">{meal.items?.map(item => item.name).join(', ') || meal.description}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">₹{meal.price}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{meal.maxCapacity}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{meal.currentBookings || 0}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
-                          meal.isAvailable 
-                            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
-                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
-                        }`}>
-                          {meal.isAvailable ? 'Available' : 'Unavailable'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
+                  {daysOfWeek.map(day => {
+                    // Debug: log all meals and their computed days
+                    meals.forEach(m => {
+                      const d = new Date(m.date);
+                      // eslint-disable-next-line no-console
+                      console.log('Meal:', m, 'Date:', m.date, 'getDay:', d.getDay(), 'Mapped day:', daysOfWeek[d.getDay()]);
+                    });
+                    const dateStr = getDateForDay(day);
+                    const dayMeals = meals.filter(m => daysOfWeek[new Date(m.date).getDay()] === day);
+                    const mealsObj = {
+                      breakfast: dayMeals.find(m => m.mealType === 'breakfast'),
+                      lunch: dayMeals.find(m => m.mealType === 'lunch'),
+                      dinner: dayMeals.find(m => m.mealType === 'dinner'),
+                    };
+                    const bookingsForDay = getBookingsForDay(dateStr);
+                    
+                    return (
+                      <tr key={day} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{day}</td>
+                        {['breakfast', 'lunch', 'dinner'].map(type => (
+                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300" key={type}>
+                            {mealsObj[type] ? (
+                              <div>
+                                <div className="font-medium">
+                                  {mealsObj[type].items?.map(item => item.name).join(', ') || mealsObj[type].description}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  ₹{mealsObj[type].price} | {mealsObj[type].isVegetarian ? 'Veg' : 'Non-Veg'} | 
+                                  Bookings: {bookingsForDay.filter(b => b.mealId?._id === mealsObj[type]._id).length}/{mealsObj[type].maxCapacity}
+                                </div>
+                              </div>
+                            ) : (
+                              <span className="text-gray-400">No meal set</span>
+                            )}
+                          </td>
+                        ))}
+                        <td className="px-6 py-4">
+                          <div className="flex gap-2">
+                                                         <button
+                               onClick={() => {
+                                 setNewMealForm(prev => ({ ...prev, date: dateStr }));
+                                 setAddMealModal({ 
+                                   open: true, 
+                                   mealData: { date: dateStr } 
+                                 });
+                               }}
+                               className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                             >
+                               Add
+                             </button>
+                            {dayMeals.length > 0 && (
+                              <button
+                                onClick={() => {
+                                  // Show edit options for existing meals
+                                  const mealIds = dayMeals.map(m => m._id);
+                                  console.log('Edit meals for day:', day, mealIds);
+                                }}
+                                className="text-green-600 hover:text-green-800 text-sm font-medium"
+                              >
+                                Edit
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
@@ -424,6 +542,185 @@ const HeadStaffDashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Add/Edit Meal Modal */}
+      {addMealModal.open && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-xl font-bold text-gray-900 dark:text-white">
+                {addMealModal.mealData._id ? 'Edit Meal' : 'Add New Meal'}
+              </h3>
+              <button
+                onClick={() => setAddMealModal({ open: false, mealData: {} })}
+                className="text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <form onSubmit={handleAddMeal} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Date
+                  </label>
+                  <input
+                    type="date"
+                    value={newMealForm.date}
+                    onChange={(e) => setNewMealForm(prev => ({ ...prev, date: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Meal Type
+                  </label>
+                  <select
+                    value={newMealForm.mealType}
+                    onChange={(e) => setNewMealForm(prev => ({ ...prev, mealType: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    required
+                  >
+                    <option value="breakfast">Breakfast</option>
+                    <option value="lunch">Lunch</option>
+                    <option value="dinner">Dinner</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Description
+                </label>
+                <input
+                  type="text"
+                  value={newMealForm.description}
+                  onChange={(e) => setNewMealForm(prev => ({ ...prev, description: e.target.value }))}
+                  placeholder="Meal description"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Meal Items
+                </label>
+                {newMealForm.items.map((item, index) => (
+                  <div key={index} className="flex gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={item.name}
+                      onChange={(e) => updateMealItem(index, 'name', e.target.value)}
+                      placeholder="Item name"
+                      className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                      required
+                    />
+                    <input
+                      type="number"
+                      value={item.calories}
+                      onChange={(e) => updateMealItem(index, 'calories', parseInt(e.target.value) || 0)}
+                      placeholder="Calories"
+                      className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                      required
+                    />
+                    {newMealForm.items.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeMealItem(index)}
+                        className="px-3 py-2 bg-red-500 text-white rounded-md hover:bg-red-600"
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  type="button"
+                  onClick={addMealItem}
+                  className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                >
+                  + Add Item
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Price (₹)
+                  </label>
+                  <input
+                    type="number"
+                    value={newMealForm.price}
+                    onChange={(e) => setNewMealForm(prev => ({ ...prev, price: parseInt(e.target.value) || 0 }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Max Capacity
+                  </label>
+                  <input
+                    type="number"
+                    value={newMealForm.maxCapacity}
+                    onChange={(e) => setNewMealForm(prev => ({ ...prev, maxCapacity: parseInt(e.target.value) || 0 }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Type
+                  </label>
+                  <select
+                    value={newMealForm.isVegetarian ? 'vegetarian' : 'non-vegetarian'}
+                    onChange={(e) => setNewMealForm(prev => ({ ...prev, isVegetarian: e.target.value === 'vegetarian' }))}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="vegetarian">Vegetarian</option>
+                    <option value="non-vegetarian">Non-Vegetarian</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="flex items-center">
+                <input
+                  type="checkbox"
+                  id="isAvailable"
+                  checked={newMealForm.isAvailable}
+                  onChange={(e) => setNewMealForm(prev => ({ ...prev, isAvailable: e.target.checked }))}
+                  className="mr-2"
+                />
+                <label htmlFor="isAvailable" className="text-sm text-gray-700 dark:text-gray-300">
+                  Available for booking
+                </label>
+              </div>
+
+              <div className="flex gap-3 pt-4">
+                <button
+                  type="submit"
+                  className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-md"
+                >
+                  {addMealModal.mealData._id ? 'Update Meal' : 'Add Meal'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAddMealModal({ open: false, mealData: {} })}
+                  className="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-300 px-6 py-2 rounded-lg hover:bg-gray-400 dark:hover:bg-gray-500 transition-all duration-200 font-medium"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

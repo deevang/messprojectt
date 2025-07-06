@@ -36,7 +36,8 @@ exports.createBooking = async (req, res) => {
       date: meal.date,
       mealType: meal.mealType,
       specialRequests,
-      price: meal.price
+      price: meal.price,
+      status: 'pending' // Start with pending status, will be updated to 'booked' after payment
     });
     
     await Meal.findByIdAndUpdate(mealId, { $inc: { currentBookings: 1 } });

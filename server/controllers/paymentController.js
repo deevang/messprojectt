@@ -4,15 +4,15 @@ const Booking = require('../models/Booking');
 
 exports.createPayment = async (req, res) => {
   try {
-    const { userId, amount, paymentType, dueDate, month, year, description, mealId, transactionId, paymentMethod, status, bookingId } = req.body;
+    const { amount, paymentType, dueDate, month, year, description, mealId, transactionId, paymentMethod, status, bookingId } = req.body;
     
     const payment = await Payment.create({
-      userId,
+      userId: req.user.userId, // Use authenticated user's ID
       amount,
       paymentType: paymentType || (mealId ? 'daily' : undefined),
       dueDate: dueDate ? new Date(dueDate) : undefined,
-      month,
-      year,
+      month: month || (dueDate ? new Date(dueDate).getMonth() + 1 : new Date().getMonth() + 1),
+      year: year || (dueDate ? new Date(dueDate).getFullYear() : new Date().getFullYear()),
       description,
       transactionId,
       paymentMethod,
@@ -20,6 +20,16 @@ exports.createPayment = async (req, res) => {
       mealId,
       bookingId
     });
+
+    // If payment is completed, update related booking(s) to 'booked'
+    if (status === 'completed') {
+      if (bookingId) {
+        await Booking.findByIdAndUpdate(bookingId, { status: 'booked' });
+      } else if (mealId && userId && dueDate) {
+        // Fallback: update all bookings for this meal, user, and date
+        await Booking.updateMany({ mealId, userId, date: new Date(dueDate) }, { status: 'booked' });
+      }
+    }
     
     res.status(201).json(payment);
   } catch (err) {
@@ -73,6 +83,15 @@ exports.updatePayment = async (req, res) => {
     
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' });
+    }
+
+    // If payment is now completed, update related booking(s) to 'booked'
+    if (status === 'completed') {
+      if (payment.bookingId) {
+        await Booking.findByIdAndUpdate(payment.bookingId, { status: 'booked' });
+      } else if (payment.mealId && payment.userId && payment.dueDate) {
+        await Booking.updateMany({ mealId: payment.mealId, userId: payment.userId, date: payment.dueDate }, { status: 'booked' });
+      }
     }
     
     res.json(payment);
