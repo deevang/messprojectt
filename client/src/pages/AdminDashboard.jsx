@@ -369,35 +369,6 @@ const AdminDashboard = () => {
           </p>
         </div>
 
-        {/* Weekly Standard Meals */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-8 transition-colors duration-300">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Weekly Standard Meals</h2>
-          {planLoading ? (
-            <div>Loading...</div>
-          ) : (
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 mb-4">
-              <thead className="bg-gray-100 dark:bg-gray-900">
-                <tr>
-                  <th className="px-4 py-2">Day</th>
-                  <th className="px-4 py-2">Breakfast</th>
-                  <th className="px-4 py-2">Lunch</th>
-                  <th className="px-4 py-2">Dinner</th>
-                </tr>
-              </thead>
-              <tbody>
-                {weeklyPlan.map(day => (
-                  <tr key={day.day}>
-                    <td className="px-4 py-2 font-bold">{day.day}</td>
-                    <td className="px-4 py-2">{day.breakfast}</td>
-                    <td className="px-4 py-2">{day.lunch}</td>
-                    <td className="px-4 py-2">{day.dinner}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6">

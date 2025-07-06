@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, Utensils } from 'lucide-react';
@@ -14,6 +14,16 @@ const LoginPage = () => {
 
   const { login } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const token = params.get('token');
+    if (token) {
+      localStorage.setItem('token', token);
+      // Optionally, fetch user profile and store in context/localStorage
+      navigate('/'); // or wherever you want to redirect after login
+    }
+  }, [navigate]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
