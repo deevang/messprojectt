@@ -289,33 +289,7 @@ const HeadStaffDashboard = () => {
               <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Weekly Meals Chart</h2>
               <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">Manage meals for the week - Add, edit, and delete meals</p>
             </div>
-            <div className="flex gap-3">
-              <button 
-                onClick={handleCreateDefaultMeals}
-                disabled={creatingDefaultMeals}
-                className="bg-gradient-to-r from-green-500 to-green-600 text-white px-4 py-2 rounded-lg hover:from-green-600 hover:to-green-700 disabled:opacity-50 transition-all duration-200 font-medium shadow-md"
-              >
-                {creatingDefaultMeals ? 'Creating...' : 'Create Sample'}
-              </button>
-              <button 
-                onClick={() => {
-                  setNewMealForm({
-                    date: '',
-                    mealType: 'breakfast',
-                    description: '',
-                    items: [{ name: '', calories: 0 }],
-                    price: 0,
-                    maxCapacity: 50,
-                    isVegetarian: true,
-                    isAvailable: true
-                  });
-                  setAddMealModal({ open: true, mealData: {} });
-                }}
-                className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-4 py-2 rounded-lg hover:from-blue-600 hover:to-blue-700 transition-all duration-200 font-medium shadow-md"
-              >
-                Add Meal
-              </button>
-            </div>
+            {/* Removed Create Sample and Add Meal buttons */}
           </div>
           
           {loading ? (
@@ -336,12 +310,6 @@ const HeadStaffDashboard = () => {
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                   {daysOfWeek.map(day => {
-                    // Debug: log all meals and their computed days
-                    meals.forEach(m => {
-                      const d = new Date(m.date);
-                      // eslint-disable-next-line no-console
-                      console.log('Meal:', m, 'Date:', m.date, 'getDay:', d.getDay(), 'Mapped day:', daysOfWeek[d.getDay()]);
-                    });
                     const dateStr = getDateForDay(day);
                     const dayMeals = meals.filter(m => daysOfWeek[new Date(m.date).getDay()] === day);
                     const mealsObj = {
@@ -349,8 +317,6 @@ const HeadStaffDashboard = () => {
                       lunch: dayMeals.find(m => m.mealType === 'lunch'),
                       dinner: dayMeals.find(m => m.mealType === 'dinner'),
                     };
-                    const bookingsForDay = getBookingsForDay(dateStr);
-                    
                     return (
                       <tr key={day} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                         <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{day}</td>
@@ -363,7 +329,7 @@ const HeadStaffDashboard = () => {
                                 </div>
                                 <div className="text-xs text-gray-500">
                                   ₹{mealsObj[type].price} | {mealsObj[type].isVegetarian ? 'Veg' : 'Non-Veg'} | 
-                                  Bookings: {bookingsForDay.filter(b => b.mealId?._id === mealsObj[type]._id).length}/{mealsObj[type].maxCapacity}
+                                  Bookings: {bookings.filter(b => b.mealId?._id === mealsObj[type]._id).length}/{mealsObj[type].maxCapacity}
                                 </div>
                               </div>
                             ) : (
@@ -372,32 +338,25 @@ const HeadStaffDashboard = () => {
                           </td>
                         ))}
                         <td className="px-6 py-4">
-                          <div className="flex gap-2">
-                                                         <button
-                               onClick={() => {
-                                 setNewMealForm(prev => ({ ...prev, date: dateStr }));
-                                 setAddMealModal({ 
-                                   open: true, 
-                                   mealData: { date: dateStr } 
-                                 });
-                               }}
-                               className="text-blue-600 hover:text-blue-800 text-sm font-medium"
-                             >
-                               Add
-                             </button>
-                            {dayMeals.length > 0 && (
-                              <button
-                                onClick={() => {
-                                  // Show edit options for existing meals
-                                  const mealIds = dayMeals.map(m => m._id);
-                                  console.log('Edit meals for day:', day, mealIds);
-                                }}
-                                className="text-green-600 hover:text-green-800 text-sm font-medium"
-                              >
-                                Edit
-                              </button>
-                            )}
-                          </div>
+                          <button
+                            onClick={() => {
+                              // Open modal to add/edit all meals for this day
+                              setNewMealForm({
+                                date: dateStr,
+                                mealType: '', // Not used for all-meal editing
+                                description: '',
+                                items: [{ name: '', calories: 0 }],
+                                price: 0,
+                                maxCapacity: 50,
+                                isVegetarian: true,
+                                isAvailable: true
+                              });
+                              setAddMealModal({ open: true, mealData: { date: dateStr, allMeals: dayMeals } });
+                            }}
+                            className="text-blue-600 hover:text-blue-800 text-sm font-medium"
+                          >
+                            Add
+                          </button>
                         </td>
                       </tr>
                     );

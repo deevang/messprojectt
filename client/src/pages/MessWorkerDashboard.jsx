@@ -3,6 +3,7 @@ import { staffAPI, authAPI, paymentsAPI, bookingsAPI, weeklyMealPlanAPI } from '
 import toast from 'react-hot-toast';
 import { User, Phone, Briefcase, IndianRupee, Edit2, CheckCircle2, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { io } from 'socket.io-client';
 
 const MessWorkerDashboard = () => {
   const { user } = useAuth();
@@ -28,6 +29,7 @@ const MessWorkerDashboard = () => {
   const [editWeeklyPlan, setEditWeeklyPlan] = useState([]);
   const [editingPlan, setEditingPlan] = useState(false);
   const [planLoading, setPlanLoading] = useState(false);
+  const [paymentStats, setPaymentStats] = useState({ totalAmount: 0 });
 
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'staff_head') {
@@ -41,6 +43,20 @@ const MessWorkerDashboard = () => {
       fetchWeeklyPlan();
     }
   }, [attendanceMonth]);
+
+  useEffect(() => {
+    fetchPaymentStats();
+  }, []);
+
+  useEffect(() => {
+    const socket = io('http://localhost:5000'); // adjust if backend runs elsewhere
+    socket.on('paymentUpdate', () => {
+      fetchRecentPayments();
+      fetchRecentBookings();
+      fetchPaymentStats(); // update stats in real time
+    });
+    return () => socket.disconnect();
+  }, []);
 
   const fetchStaff = async () => {
     try {
@@ -200,8 +216,8 @@ const MessWorkerDashboard = () => {
 
   const fetchRecentBookings = async () => {
     try {
-      const res = await bookingsAPI.getAll({ limit: 5, sort: '-date' });
-      setRecentBookings(res.data.bookings || []);
+      const res = await bookingsAPI.getRecentWithPayments();
+      setRecentBookings(res.data || []);
     } catch (err) {
       setRecentBookings([]);
     }
@@ -236,6 +252,15 @@ const MessWorkerDashboard = () => {
       toast.error('Failed to update meal plan');
     } finally {
       setPlanLoading(false);
+    }
+  };
+
+  const fetchPaymentStats = async () => {
+    try {
+      const res = await paymentsAPI.getStats();
+      setPaymentStats(res.data || { totalAmount: 0 });
+    } catch {
+      setPaymentStats({ totalAmount: 0 });
     }
   };
 
@@ -473,6 +498,157 @@ const MessWorkerDashboard = () => {
             <div className="text-center text-lg text-gray-500 py-8 animate-pulse">Loading attendance...</div>
           ) : null}
         </div>
+
+        {/* Recent Payments Section */}
+        {/* {user?.role !== 'staff_head' && recentPayments.length > 0 && (
+          <div className="bg-white rounded-xl shadow p-6 mb-8">
+            <h2 className="text-2xl font-bold mb-4 text-blue-700 flex items-center gap-2">Recent Payments</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-blue-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Student</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Amount</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Date</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Status</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {recentPayments.map(p => (
+                    <tr key={p._id}>
+                      <td className="px-4 py-2">{p.student?.name || p.studentName || '-'}</td>
+                      <td className="px-4 py-2">₹{p.amount || '-'}</td>
+                      <td className="px-4 py-2">{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '-'}</td>
+                      <td className="px-4 py-2">
+                        {p.status === 'pending_verification' ? (
+                          <span className="text-yellow-600 font-bold">Pending Verification</span>
+                        ) : p.status === 'paid' || p.status === 'completed' ? (
+                          <span className="text-green-600 font-bold">Paid</span>
+                        ) : (
+                          <span className="text-gray-600">{p.status}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        {p.status === 'pending_verification' && (
+                          <button className="bg-green-500 text-white px-3 py-1 rounded" onClick={async () => {
+                            await paymentsAPI.update(p._id, { status: 'paid' });
+                            fetchRecentPayments();
+                          }}>Verify</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )} */}
+
+        {/* Recent Bookings Section */}
+        {/* {user?.role !== 'staff_head' && recentBookings.length > 0 && (
+          <div className="bg-white rounded-xl shadow p-6 mb-8">
+            <h2 className="text-2xl font-bold mb-4 text-blue-700 flex items-center gap-2">Recent Bookings</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-blue-50">
+                  <tr>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Student</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Meal</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Date</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Amount</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Status</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-100">
+                  {recentBookings.map(b => (
+                    <tr key={b._id}>
+                      <td className="px-4 py-2">{b.student?.name || b.studentName || '-'}</td>
+                      <td className="px-4 py-2">{b.mealId?.items?.map(i => i.name).join(', ') || b.mealId?.description || '-'}</td>
+                      <td className="px-4 py-2">{b.mealId?.date ? new Date(b.mealId.date).toLocaleDateString() : '-'}</td>
+                      <td className="px-4 py-2">₹{b.amount || '-'}</td>
+                      <td className="px-4 py-2">
+                        {b.status === 'pending_verification' ? (
+                          <span className="text-yellow-600 font-bold">Pending Verification</span>
+                        ) : b.status === 'paid' || b.status === 'completed' ? (
+                          <span className="text-green-600 font-bold">Paid</span>
+                        ) : (
+                          <span className="text-gray-600">{b.status}</span>
+                        )}
+                      </td>
+                      <td className="px-4 py-2">
+                        {b.status === 'pending_verification' && (
+                          <button className="bg-green-500 text-white px-3 py-1 rounded" onClick={async () => {
+                            await bookingsAPI.update(b._id, { status: 'paid' });
+                            fetchRecentBookings();
+                          }}>Verify</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )} */}
+
+        {/* Weekly Plan Section */}
+        {/* <div className="mt-12">
+          <div className="flex items-center gap-4 mb-4">
+            <CalendarIcon className="w-6 h-6 text-blue-600" />
+            <h2 className="text-2xl font-bold text-gray-900">Weekly Meal Plan</h2>
+            <button className="ml-auto px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition flex items-center gap-1 shadow-sm" onClick={() => setEditingPlan(true)} disabled={planLoading}>
+              {planLoading ? 'Loading...' : 'Edit Plan'}
+            </button>
+          </div>
+          {planLoading ? (
+            <div className="text-center text-lg text-gray-500 py-8 animate-pulse">Loading meal plan...</div>
+          ) : editingPlan ? (
+            <div className="bg-white rounded-xl shadow p-6">
+              <h3 className="text-xl font-bold mb-4 text-blue-700">Edit Weekly Meal Plan</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-7 gap-4">
+                {editWeeklyPlan.map((day, idx) => (
+                  <div key={idx} className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold mb-2 text-blue-600">Day {idx + 1}</h4>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Breakfast</label>
+                        <input type="text" value={day.breakfast} onChange={(e) => handlePlanChange(idx, 'breakfast', e.target.value)} className="mt-1 block w-full border rounded px-2 py-1 focus:ring-2 focus:ring-blue-400" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Lunch</label>
+                        <input type="text" value={day.lunch} onChange={(e) => handlePlanChange(idx, 'lunch', e.target.value)} className="mt-1 block w-full border rounded px-2 py-1 focus:ring-2 focus:ring-blue-400" />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700">Dinner</label>
+                        <input type="text" value={day.dinner} onChange={(e) => handlePlanChange(idx, 'dinner', e.target.value)} className="mt-1 block w-full border rounded px-2 py-1 focus:ring-2 focus:ring-blue-400" />
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="flex justify-end space-x-2 mt-6">
+                <button type="button" className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition" onClick={() => setEditingPlan(false)}>Cancel</button>
+                <button type="button" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition shadow" onClick={handleSavePlan} disabled={planLoading}>{planLoading ? 'Saving...' : 'Save Plan'}</button>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow p-6">
+              <h3 className="text-xl font-bold mb-4 text-blue-700">Current Weekly Meal Plan</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-7 gap-4">
+                {weeklyPlan.map((day, idx) => (
+                  <div key={idx} className="bg-blue-50 rounded-lg p-4">
+                    <h4 className="text-lg font-semibold mb-2 text-blue-600">Day {idx + 1}</h4>
+                    <p className="text-base text-gray-800">Breakfast: {day.breakfast || '-'}</p>
+                    <p className="text-base text-gray-800">Lunch: {day.lunch || '-'}</p>
+                    <p className="text-base text-gray-800">Dinner: {day.dinner || '-'}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div> */}
 
         {/* Edit Staff Modal */}
         {editStaff && (

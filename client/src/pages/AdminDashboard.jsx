@@ -107,7 +107,7 @@ const AdminDashboard = () => {
         totalStudents: studentStatsRes.data.totalStudents || 0,
         totalMeals: mealStatsRes.data.totalMeals || 0,
         totalBookings: mealStatsRes.data.totalBookings || 0,
-        totalRevenue: paymentStatsRes.data.totalRevenue || 0,
+        totalRevenue: paymentStatsRes.data.totalAmount || 0,
       });
 
       setRecentStudents(recentStudentsRes.data.students || []);

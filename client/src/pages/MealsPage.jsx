@@ -5,8 +5,8 @@ import toast from 'react-hot-toast';
 import { Link } from 'react-router-dom';
 import QRCode from 'react-qr-code';
 
-const UPI_ID = "your-upi-id@bank";
-const UPI_NAME = "Your Name";
+const UPI_ID = "aryantanwarr@okaxis";
+const UPI_NAME = "Aryan Tanwar";
 
 const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
@@ -132,6 +132,10 @@ const MealsPage = () => {
   const handlePaySubmit = async (txnId) => {
     try {
       const dueDate = new Date(payModal.dateStr);
+      if (!txnId) throw new Error('Transaction ID is required');
+      if (!payModal.amount || isNaN(payModal.amount) || payModal.amount <= 0) throw new Error('Amount is required and must be positive');
+      if (!payModal.dateStr || isNaN(dueDate.getTime())) throw new Error('Due date is required and must be valid');
+      if (!payModal.mealIds || !payModal.mealIds.length) throw new Error('Meal ID is required');
       for (const mealId of payModal.mealIds) {
         await paymentsAPI.createMealPayment({
           mealId,
@@ -139,7 +143,7 @@ const MealsPage = () => {
           amount: payModal.amount,
           paymentType: 'daily',
           paymentMethod: 'online',
-          status: 'completed',
+          status: 'pending',
           description: `Meal payment for ${payModal.mealNames} (${payModal.day})`,
           dueDate: payModal.dateStr,
           month: dueDate.getMonth() + 1, // 1-12
@@ -153,8 +157,8 @@ const MealsPage = () => {
       const res = await mealsAPI.getMyBookings();
       setBookings([...(res.data.upcomingMeals || []), ...(res.data.previousMeals || [])]);
     } catch (err) {
-      console.error('Payment error:', err);
-      toast.error(err.response?.data?.error || 'Failed to submit payment.');
+      console.error('Payment error:', err, err.response?.data);
+      toast.error(err.response?.data?.error || err.message || 'Failed to submit payment.');
     }
   };
 
@@ -162,6 +166,10 @@ const MealsPage = () => {
   const handlePayPendingSubmit = async (txnId) => {
     try {
       const dueDate = new Date(payPendingModal.date);
+      if (!txnId) throw new Error('Transaction ID is required');
+      if (!payPendingModal.amount || isNaN(payPendingModal.amount) || payPendingModal.amount <= 0) throw new Error('Amount is required and must be positive');
+      if (!payPendingModal.date || isNaN(dueDate.getTime())) throw new Error('Due date is required and must be valid');
+      if (!payPendingModal.bookingIds || !payPendingModal.bookingIds.length) throw new Error('Booking ID is required');
       for (const bookingId of payPendingModal.bookingIds) {
         await paymentsAPI.createMealPayment({
           bookingId,
@@ -169,7 +177,7 @@ const MealsPage = () => {
           amount: payPendingModal.amount,
           paymentType: 'daily',
           paymentMethod: 'online',
-          status: 'completed',
+          status: 'pending',
           description: `Meal payment for ${payPendingModal.mealNames} (${payPendingModal.date})`,
           dueDate: payPendingModal.date,
           month: dueDate.getMonth() + 1, // 1-12
@@ -183,8 +191,8 @@ const MealsPage = () => {
       const res = await mealsAPI.getMyBookings();
       setBookings([...(res.data.upcomingMeals || []), ...(res.data.previousMeals || [])]);
     } catch (err) {
-      console.error('Payment error:', err);
-      toast.error(err.response?.data?.error || 'Failed to submit payment.');
+      console.error('Payment error:', err, err.response?.data);
+      toast.error(err.response?.data?.error || err.message || 'Failed to submit payment.');
     }
   };
 
@@ -196,10 +204,16 @@ const MealsPage = () => {
         await bookingsAPI.delete(booking._id);
       }
       toast.success('All bookings for the day cancelled!');
-      
-      // Refresh bookings
-      const res = await mealsAPI.getMyBookings();
-      setBookings([...(res.data.upcomingMeals || []), ...(res.data.previousMeals || [])]);
+      // Refresh bookings and meals
+      const [mealsRes, bookingsRes] = await Promise.all([
+        mealsAPI.getAll(),
+        mealsAPI.getMyBookings()
+      ]);
+      let data = mealsRes.data.meals || mealsRes.data;
+      if (!Array.isArray(data)) data = [];
+      data.sort((a, b) => new Date(a.date) - new Date(b.date));
+      setMeals(data);
+      setBookings([...(bookingsRes.data.upcomingMeals || []), ...(bookingsRes.data.previousMeals || [])]);
     } catch (err) {
       toast.error('Failed to cancel bookings for the day');
     } finally {
@@ -274,12 +288,8 @@ const MealsPage = () => {
                                   <div className="text-xs text-gray-500">
                                     ₹{meal.price} | {meal.isVegetarian ? 'Veg' : 'Non-Veg'}
                                   </div>
-                                  {booking ? (
-                                    booking.status === 'pending' ? (
-                                      <span className="text-yellow-600 font-semibold block">Pending Payment</span>
-                                    ) : (
-                                      <span className="text-green-600 font-semibold block">Booked</span>
-                                    )
+                                  {booking && booking.status === 'booked' ? (
+                                    <span className="text-green-600 font-semibold block">Booked</span>
                                   ) : (
                                     <button
                                       className="bg-gradient-to-r from-blue-500 to-green-600 text-white px-3 py-1 rounded mt-1 text-xs font-medium"
@@ -368,7 +378,14 @@ const MealsPage = () => {
                             <div className="text-xs text-gray-500 dark:text-gray-400">
                               Calories: {b.mealId?.totalCalories || 0} | Price: ₹{b.mealId?.price || 0} | {b.mealId?.isVegetarian ? 'Veg' : 'Non-Veg'}
                             </div>
-                            <div className="text-xs text-gray-400">Status: {b.status}</div>
+                            <div className="text-xs text-gray-400">Status: {b.status === 'completed' || b.status === 'paid' ? (
+  <span className="text-green-600 font-bold">Paid</span>
+) : b.status === 'pending_verification' ? (
+  <span className="text-yellow-600 font-bold">Pending Verification</span>
+) : b.status === 'pending' ? (
+  <span className="text-yellow-600 font-bold">Pending Payment</span>
+) : b.status}
+</div>
                           </div>
                         ))}
                       </div>
@@ -429,6 +446,8 @@ const MealsPage = () => {
 
 function MealPayModal({ open, onClose, amount, mealName, onSubmit }) {
   const [txnId, setTxnId] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   if (!open) return null;
   const upiUrl = `upi://pay?pa=${encodeURIComponent(UPI_ID)}&pn=${encodeURIComponent(UPI_NAME)}&am=${amount}&tn=${encodeURIComponent(mealName)}`;
   return (
@@ -445,17 +464,38 @@ function MealPayModal({ open, onClose, amount, mealName, onSubmit }) {
           placeholder="Enter UPI Transaction/Ref ID after payment"
           value={txnId}
           onChange={e => setTxnId(e.target.value)}
+          disabled={loading}
         />
+        {error && <div className="text-red-600 mt-2 text-sm">{error}</div>}
         <div className="flex gap-2 mt-4 w-full">
           <button 
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex-1" 
-            onClick={() => onSubmit(txnId)}
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 flex-1 disabled:opacity-50" 
+            onClick={async () => {
+              setLoading(true);
+              setError("");
+              try {
+                if (!txnId) {
+                  setError("Please enter the UPI Transaction/Ref ID.");
+                  setLoading(false);
+                  return;
+                }
+                await onSubmit(txnId);
+                setTxnId("");
+                onClose();
+              } catch (err) {
+                setError("Failed to submit payment. Please try again.");
+              } finally {
+                setLoading(false);
+              }
+            }}
+            disabled={loading}
           >
-            Submit
+            {loading ? "Submitting..." : "Submit"}
           </button>
           <button 
             className="bg-gray-300 dark:bg-gray-600 text-gray-700 dark:text-gray-200 px-4 py-2 rounded hover:bg-gray-400 dark:hover:bg-gray-500 flex-1" 
             onClick={onClose}
+            disabled={loading}
           >
             Close
           </button>

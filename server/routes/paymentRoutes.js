@@ -26,7 +26,7 @@ router.get('/stats', verifyToken, (req, res, next) => {
   if (req.user.role === 'admin' || req.user.role === 'staff_head') return next();
   return res.status(403).json({ error: 'Forbidden' });
 }, getPaymentStats);
-router.post('/', verifyToken, isAdmin, createPayment);
+router.post('/', verifyToken, createPayment);
 router.put('/:id', verifyToken, isAdmin, updatePayment);
 router.delete('/:id', verifyToken, isAdmin, deletePayment);
 

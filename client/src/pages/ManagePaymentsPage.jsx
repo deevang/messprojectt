@@ -16,6 +16,7 @@ import {
   DollarSign,
   TrendingUp
 } from 'lucide-react';
+import upiQR from '../assets/qr.jpg';
 
 const ManagePaymentsPage = () => {
   const [payments, setPayments] = useState([]);
@@ -178,6 +179,19 @@ const ManagePaymentsPage = () => {
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 bg-background dark:bg-gray-950 min-h-screen transition-colors duration-300">
+      {/* UPI QR Payment Section */}
+      <div className="flex flex-col items-center my-8">
+        <img
+          src={upiQR}
+          alt="Scan to pay Aryan Tanwar via UPI"
+          className="w-64 h-64 rounded-lg shadow-lg"
+        />
+        <p className="mt-4 text-lg font-semibold">
+          UPI ID: <span className="font-mono">aryantanwarr@okaxis</span>
+        </p>
+        <p className="text-gray-600 mt-2">Scan to pay with any UPI app</p>
+      </div>
+
       <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-8">Manage Payments</h1>
 
       {/* Stats Cards */}

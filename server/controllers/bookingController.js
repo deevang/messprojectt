@@ -270,18 +270,46 @@ exports.getRecentBookingsWithPayments = async (req, res) => {
       .lean();
     // Get payments for these bookings
     const bookingIds = bookings.map(b => b._id);
-    const payments = await Payment.find({ bookingId: { $in: bookingIds } }).lean();
+    const payments = await Payment.find({
+      $or: [
+        { bookingId: { $in: bookingIds } },
+        ...bookings.map(b => ({
+          mealId: b.mealId,
+          userId: b.userId?._id || b.userId,
+          dueDate: b.date
+        }))
+      ]
+    }).lean();
     // Map payments by bookingId
     const paymentMap = {};
-    payments.forEach(p => { paymentMap[p.bookingId?.toString()] = p; });
+    payments.forEach(p => {
+      if (p.bookingId) paymentMap[p.bookingId?.toString()] = p;
+      if (p.mealId && p.userId && p.dueDate) {
+        const mealIdStr = p.mealId.toString();
+        const userIdStr = p.userId.toString();
+        const dateStr = new Date(p.dueDate).toISOString().slice(0,10);
+        const key = `${mealIdStr}_${userIdStr}_${dateStr}`;
+        paymentMap[key] = p;
+        console.log('Payment fallback key:', key, '| mealId:', mealIdStr, '| userId:', userIdStr, '| date:', dateStr, '| amount:', p.amount);
+      }
+    });
     // Combine data
-    const result = bookings.map(b => ({
-      student: b.userId?.name || 'Unknown',
-      meals: 1, // 1 per booking (customize if needed)
-      amount: paymentMap[b._id.toString()]?.amount || 0,
-      date: b.date,
-      time: b.createdAt,
-    }));
+    const result = bookings.map(b => {
+      let payment = paymentMap[b._id.toString()];
+      if (!payment && b.mealId && b.userId && b.date) {
+        const userIdStr = b.userId?._id ? b.userId._id.toString() : b.userId.toString();
+        const key = `${b.mealId}_${userIdStr}_${new Date(b.date).toISOString().slice(0,10)}`;
+        payment = paymentMap[key];
+        console.log('Booking fallback key:', key, 'matched amount:', payment?.amount);
+      }
+      return {
+        student: b.userId?.name || 'Unknown',
+        meals: 1,
+        amount: payment?.amount || 0,
+        date: b.date,
+        time: b.createdAt,
+      };
+    });
     res.json(result);
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -16,22 +16,22 @@ exports.createPayment = async (req, res) => {
       description,
       transactionId,
       paymentMethod,
-      status,
+      status: 'completed', // always completed
       mealId,
       bookingId
     });
 
-    // If payment is completed, update related booking(s) to 'booked'
-    if (status === 'completed') {
-      if (bookingId) {
-        await Booking.findByIdAndUpdate(bookingId, { status: 'booked' });
-      } else if (mealId && userId && dueDate) {
-        // Fallback: update all bookings for this meal, user, and date
-        await Booking.updateMany({ mealId, userId, date: new Date(dueDate) }, { status: 'booked' });
-      }
+    // Always update related booking(s) to 'booked' after payment
+    const userId = req.user.userId;
+    if (bookingId) {
+      await Booking.findByIdAndUpdate(bookingId, { status: 'booked', price: amount });
+    } else if (mealId && userId && dueDate) {
+      await Booking.updateMany({ mealId, userId, date: new Date(dueDate) }, { status: 'booked', price: amount });
     }
     
     res.status(201).json(payment);
+    const io = req.app.get('io');
+    if (io) io.emit('paymentUpdate', { payment });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -95,6 +95,8 @@ exports.updatePayment = async (req, res) => {
     }
     
     res.json(payment);
+    const io = req.app.get('io');
+    if (io) io.emit('paymentUpdate', { payment });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -129,18 +131,18 @@ exports.getPaymentStats = async (req, res) => {
     const totalPayments = await Payment.countDocuments();
     const pendingPayments = await Payment.countDocuments({ status: 'pending' });
     const completedPayments = await Payment.countDocuments({ status: 'completed' });
+    const paymentsForStats = await Payment.find({ status: { $in: ['completed', 'paid'] } });
+    console.log('Payments included in stats:', paymentsForStats.map(p => ({ _id: p._id, amount: p.amount, status: p.status }))); 
     const totalAmount = await Payment.aggregate([
-      { $match: { status: 'completed' } },
+      { $match: { status: { $in: ['completed', 'paid'] } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    
     const monthlyStats = await Payment.aggregate([
-      { $match: { status: 'completed' } },
+      { $match: { status: { $in: ['completed', 'paid'] } } },
       { $group: { _id: { month: '$month', year: '$year' }, total: { $sum: '$amount' } } },
       { $sort: { '_id.year': -1, '_id.month': -1 } },
       { $limit: 12 }
     ]);
-    
     res.json({
       totalPayments,
       pendingPayments,

@@ -296,6 +296,19 @@ const ManageStudentsPage = () => {
                       <button onClick={() => handleDelete(student._id)} className="text-red-600 hover:text-red-900">
                         <Trash2 className="w-5 h-5" />
                       </button>
+                      {student.paymentStatus === 'pending' && (
+                        <button
+                          className="bg-green-500 text-white px-3 py-1 rounded ml-2"
+                          onClick={async () => {
+                            await studentsAPI.updatePaymentStatus(student._id, 'paid');
+                            toast.success('Payment verified!');
+                            await fetchStats();
+                            await fetchStudents();
+                          }}
+                        >
+                          Verify
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))
