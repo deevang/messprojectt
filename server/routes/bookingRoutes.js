@@ -10,15 +10,18 @@ const {
   markAsConsumed,
   bookTodayFromPlan,
   bookWeekFromPlan,
-  getRecentBookingsWithPayments
+  getRecentBookingsWithPayments,
+  createDayBooking,
+  getDayBookingsByUser
 } = require('../controllers/bookingController');
 const { verifyToken, isAdmin, isMessStaff } = require('../middleware/authMiddleware');
 
 // Protected routes
 router.get('/my-bookings', verifyToken, getBookingsByUser);
+router.get('/my-day-bookings', verifyToken, getDayBookingsByUser);
 router.post('/', verifyToken, createBooking);
+router.post('/day', verifyToken, createDayBooking);
 router.put('/:id/consume', verifyToken, isMessStaff, markAsConsumed);
-router.delete('/:id', verifyToken, deleteBooking);
 router.post('/book-today-from-plan', verifyToken, bookTodayFromPlan);
 router.post('/book-week-from-plan', verifyToken, bookWeekFromPlan);
 

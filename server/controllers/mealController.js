@@ -193,27 +193,7 @@ exports.bookMeal = async (req, res) => {
 };
 
 exports.cancelBooking = async (req, res) => {
-  try {
-    const { bookingId } = req.params;
-    
-    const booking = await Booking.findById(bookingId);
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-    
-    if (booking.userId.toString() !== req.user.userId && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Not authorized to cancel this booking' });
-    }
-    
-    await Booking.findByIdAndUpdate(bookingId, { status: 'cancelled' });
-    
-    // Update meal booking count
-    await Meal.findByIdAndUpdate(booking.mealId, { $inc: { currentBookings: -1 } });
-    
-    res.json({ message: 'Booking cancelled successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  return res.status(403).json({ error: 'Cancelling a meal booking is not allowed.' });
 };
 
 exports.getMyBookings = async (req, res) => {
@@ -463,5 +443,21 @@ exports.createDefaultMealsForWeek = async (req, res) => {
   } catch (err) {
     console.error('createDefaultMealsForWeek error:', err);
     res.status(500).json({ error: 'Failed to create default meals: ' + err.message });
+  }
+};
+
+exports.getMealsForNext7Days = async (req, res) => {
+  try {
+    const today = new Date();
+    const utcToday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+    const utcSevenDaysLater = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + 7));
+
+    const meals = await Meal.find({
+      date: { $gte: utcToday, $lt: utcSevenDaysLater }
+    }).populate('preparedBy', 'name').sort({ date: 1, mealType: 1 });
+
+    res.json(meals);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 };
