@@ -55,6 +55,8 @@ const HeadStaffDashboard = () => {
     isAvailable: true
   });
   const [refresh, setRefresh] = useState(0); // Dummy state to force re-render
+  const [searchBooking, setSearchBooking] = useState("");
+  const [searchExpense, setSearchExpense] = useState("");
 
   const today = new Date();
   const dayOfWeek = today.getUTCDay(); // 0 (Sun) - 6 (Sat)
@@ -450,44 +452,96 @@ const HeadStaffDashboard = () => {
           )}
         </div>
 
-        {/* Recent Bookings (Combined) */}
+        {/* Recent Bookings Section */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-8">
           <div className="mb-6">
             <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Recent Bookings</h2>
             <p className="text-gray-600 dark:text-gray-300 text-sm mt-1">Recent bookings made by students with payment information</p>
           </div>
+          <div className="mb-4 flex justify-end">
+            <input
+              type="text"
+              className="w-full md:w-72 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="Search by name, ID, amount, meal day, or time"
+              value={searchBooking}
+              onChange={e => setSearchBooking(e.target.value)}
+            />
+          </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Student</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">No. of Meals</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date & Time</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {recentBookings.length === 0 ? (
+            <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <td colSpan="4" className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <div className="flex flex-col items-center">
-                        <svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <p>No recent bookings found</p>
-                      </div>
-                    </td>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Student (Name/ID)</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Meal Day</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Payment Date & Time</th>
                   </tr>
-                ) : recentBookings.map((booking, idx) => (
-                  <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">{booking.student}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{booking.meals}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700 dark:text-gray-300">₹{booking.amount}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{new Date(booking.time).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {/* Group bookings by student and meal day, filter and limit to 3 */}
+                  {Object.values(
+                    recentBookings.reduce((acc, booking) => {
+                      // Key: studentId + meal day
+                      const studentId = booking.studentId || booking.student || booking._id || '';
+                      const mealDateRaw = booking.date || booking.time;
+                      const mealDateObj = new Date(mealDateRaw);
+                      const mealDate = mealDateObj.toISOString().slice(0, 10);
+                      const key = `${studentId}_${mealDate}`;
+                      if (!acc[key]) acc[key] = {
+                        student: booking.student,
+                        studentId: studentId,
+                        mealDateRaw,
+                        mealDate,
+                        amount: 0,
+                        paymentTime: booking.time,
+                        paymentDateTime: new Date(booking.time),
+                      };
+                      acc[key].amount += booking.amount;
+                      // Use latest payment time for the group
+                      if (new Date(booking.time) > acc[key].paymentDateTime) {
+                        acc[key].paymentTime = booking.time;
+                        acc[key].paymentDateTime = new Date(booking.time);
+                      }
+                      return acc;
+                    }, {})
+                  )
+                    .sort((a, b) => b.paymentDateTime - a.paymentDateTime)
+                    .filter(booking => {
+                      const mealDayName = new Date(booking.mealDateRaw).toLocaleDateString('en-US', { weekday: 'long' });
+                      const paymentDate = booking.paymentDateTime.toISOString().slice(0, 10);
+                      const paymentDayName = booking.paymentDateTime.toLocaleDateString('en-US', { weekday: 'long' });
+                      const paymentTime = booking.paymentDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      const search = searchBooking.toLowerCase();
+                      return (
+                        booking.student?.toLowerCase().includes(search) ||
+                        booking.studentId?.toLowerCase().includes(search) ||
+                        booking.amount?.toString().includes(search) ||
+                        mealDayName.toLowerCase().includes(search) ||
+                        booking.mealDate?.includes(search) ||
+                        paymentDate.includes(search) ||
+                        paymentDayName.toLowerCase().includes(search) ||
+                        paymentTime.toLowerCase().includes(search)
+                      );
+                    })
+                    .slice(0, 3)
+                    .map((booking, idx) => {
+                      const mealDayName = new Date(booking.mealDateRaw).toLocaleDateString('en-US', { weekday: 'long' });
+                      const paymentDate = booking.paymentDateTime.toISOString().slice(0, 10);
+                      const paymentDayName = booking.paymentDateTime.toLocaleDateString('en-US', { weekday: 'long' });
+                      const paymentTime = booking.paymentDateTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                      return (
+                        <tr key={idx} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">{booking.student} <span className="text-xs text-gray-400">({booking.studentId})</span></td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{mealDayName}, {booking.mealDate}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-700 dark:text-gray-300">₹{booking.amount}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">{paymentDate} {paymentTime} ({paymentDayName})</td>
+                        </tr>
+                      );
+                    })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
 
@@ -541,46 +595,67 @@ const HeadStaffDashboard = () => {
           <div className="mb-4">
             <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Expenses List</h3>
           </div>
+          <div className="mb-4 flex justify-end">
+            <input
+              type="text"
+              className="w-full md:w-72 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              placeholder="Search by category, description, or amount"
+              value={searchExpense}
+              onChange={e => setSearchExpense(e.target.value)}
+            />
+          </div>
           <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-50 dark:bg-gray-700">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Category</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Description</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                {expenseLoading ? (
+            <div style={{ maxHeight: '260px', overflowY: 'auto' }}>
+              <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
-                    <td colSpan="4" className="text-center py-8">
-                      <div className="flex justify-center items-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
-                      </div>
-                    </td>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Category</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Description</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
                   </tr>
-                ) : expenses.length === 0 ? (
-                  <tr>
-                    <td colSpan="4" className="text-center py-8 text-gray-500 dark:text-gray-400">
-                      <div className="flex flex-col items-center">
-                        <svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
-                        </svg>
-                        <p>No expenses found</p>
-                      </div>
-                    </td>
-                  </tr>
-                ) : expenses.map(exp => (
-                  <tr key={exp._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{exp.date?.slice(0,10)}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{exp.category}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">{exp.description}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">₹{exp.amount}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                  {expenseLoading ? (
+                    <tr>
+                      <td colSpan="4" className="text-center py-8">
+                        <div className="flex justify-center items-center">
+                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : expenses.length === 0 ? (
+                    <tr>
+                      <td colSpan="4" className="text-center py-8 text-gray-500 dark:text-gray-400">
+                        <div className="flex flex-col items-center">
+                          <svg className="w-12 h-12 text-gray-300 dark:text-gray-600 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1" />
+                          </svg>
+                          <p>No expenses found</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : expenses
+                      .filter(exp => {
+                        const search = searchExpense.toLowerCase();
+                        return (
+                          exp.category?.toLowerCase().includes(search) ||
+                          exp.description?.toLowerCase().includes(search) ||
+                          exp.amount?.toString().includes(search)
+                        );
+                      })
+                      .slice(0, 3)
+                      .map(exp => (
+                        <tr key={exp._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{exp.date?.slice(0,10)}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{exp.category}</td>
+                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">{exp.description}</td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">₹{exp.amount}</td>
+                        </tr>
+                      ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>

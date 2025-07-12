@@ -59,6 +59,7 @@ const AdminDashboard = () => {
   const [totalStaffSalary, setTotalStaffSalary] = useState(0);
 
   const [recentBookings, setRecentBookings] = useState([]);
+  const [searchBooking, setSearchBooking] = useState("");
 
   // State for meals chart (read-only)
   const [meals, setMeals] = useState([]);
@@ -313,34 +314,69 @@ const AdminDashboard = () => {
 
         {/* Recent Bookings (Combined) */}
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Bookings</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-100 dark:bg-gray-900">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Student</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">No. of Meals</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Date & Time</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {recentBookings.length === 0 ? (
-                  <tr><td colSpan="4" className="text-center">No recent bookings found.</td></tr>
-                ) : recentBookings.map((booking, idx) => (
-                  <tr key={idx}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">{booking.student}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">{booking.meals}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">₹{booking.amount}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">{new Date(booking.time).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Bookings</h2>
+            <div className="flex justify-end">
+              <input
+                type="text"
+                className="w-full md:w-72 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="Search by meal day, date, or amount"
+                value={searchBooking}
+                onChange={e => setSearchBooking(e.target.value)}
+              />
+            </div>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-300 mt-2">
-            This table shows the recent bookings made by each student, including payment info.
-          </p>
+          {recentBookings.length === 0 ? (
+            <div className="text-gray-500 text-center py-8">No recent bookings found.</div>
+          ) : (
+            <div style={{ maxHeight: '260px', overflowY: 'auto' }} className="space-y-4">
+              {/* Group bookings by date and show only one total per day */}
+              {Object.entries(
+                recentBookings.reduce((acc, booking) => {
+                  // Use booking.date as the meal day, fallback to time
+                  const mealDateRaw = booking.date || booking.time;
+                  const mealDateObj = new Date(mealDateRaw);
+                  const mealDate = mealDateObj.toISOString().slice(0, 10); // Always YYYY-MM-DD
+                  if (!acc[mealDate]) acc[mealDate] = { ...booking, amount: 0, meals: 0, mealDateRaw, count: 0, bookingTime: booking.time };
+                  acc[mealDate].amount += booking.amount;
+                  acc[mealDate].meals += booking.meals || 0;
+                  acc[mealDate].count += 1;
+                  return acc;
+                }, {})
+              )
+                .filter(([mealDate, booking]) => {
+                  const dayName = new Date(booking.mealDateRaw).toLocaleDateString('en-US', { weekday: 'long' });
+                  const bookingDate = new Date(booking.bookingTime).toISOString().slice(0, 10);
+                  const search = searchBooking.toLowerCase();
+                  return (
+                    dayName.toLowerCase().includes(search) ||
+                    mealDate.includes(search) ||
+                    bookingDate.includes(search) ||
+                    booking.amount.toString().includes(search)
+                  );
+                })
+                .slice(0, 3)
+                .map(([mealDate, booking]) => {
+                  const dayName = new Date(booking.mealDateRaw).toLocaleDateString('en-US', { weekday: 'long' });
+                  const bookingDate = new Date(booking.bookingTime).toISOString().slice(0, 10);
+                  return (
+                    <div key={mealDate} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">Day meal bookings ({dayName}, {mealDate})</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Booking date: {bookingDate} | {booking.meals} meals</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900 dark:text-white">₹{booking.amount}</p>
+                        <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
+                          {/* Status not available, so just a dot */}
+                          ●
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}

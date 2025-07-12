@@ -27,6 +27,7 @@ const MealsPage = () => {
   const [loading, setLoading] = useState(true);
   const [bookingLoading, setBookingLoading] = useState(false);
   const [payModal, setPayModal] = useState({ open: false, amount: 0, mealNames: '', bookingIds: [], day: '', dateStr: '' });
+  const [searchDay, setSearchDay] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -292,47 +293,59 @@ const MealsPage = () => {
         {user.role === 'student' && (
           <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-8 transition-colors duration-300">
             <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">My Day Bookings</h2>
+            <input
+              type="text"
+              placeholder="Find by day or date (e.g. Monday or 2025-07-13)"
+              value={searchDay}
+              onChange={e => setSearchDay(e.target.value)}
+              className="mb-4 px-3 py-2 border rounded w-full max-w-xs text-sm"
+            />
             {dayBookings.length === 0 ? (
               <div className="text-gray-500 text-center py-8">No day bookings yet. Book your first day to get started!</div>
             ) : (
-              <div className="space-y-4">
-                {dayBookings.map((dayBooking) => (
-                  <div key={dayBooking.date} className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                    <div className="flex justify-between items-center mb-3">
-                      <div className="font-semibold text-lg">
-                        {new Date(dayBooking.date).toLocaleDateString('en-CA', { weekday: 'long' })} ({dayBooking.date})
-                      </div>
-                      <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                        dayBooking.status === 'booked' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {dayBooking.status === 'booked' ? 'Confirmed' : 'Pending Payment'}
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                      {dayBooking.bookings.map(booking => (
-                        <div key={booking._id} className="bg-white dark:bg-gray-700 rounded p-3 shadow">
-                          <div className="font-bold capitalize text-sm">{booking.mealId?.mealType}</div>
-                          <div className="text-gray-600 dark:text-gray-300 text-xs mt-1">
-                            {Array.isArray(booking.mealId?.items) ? booking.mealId.items.map(i => i.name).join(', ') : ''}
-                          </div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                            ₹{booking.mealId?.price || 0} | {booking.mealId?.isVegetarian ? 'Veg' : 'Non-Veg'}
-                          </div>
+              <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+                {dayBookings
+                  .filter(dayBooking => {
+                    if (!searchDay) return true;
+                    const dayName = new Date(dayBooking.date).toLocaleDateString('en-US', { weekday: 'long' });
+                    return dayName.toLowerCase().includes(searchDay.toLowerCase()) ||
+                      dayBooking.date.includes(searchDay);
+                  })
+                  .map((dayBooking) => (
+                    <div key={dayBooking.date} className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4">
+                      <div className="flex justify-between items-center mb-3">
+                        <div className="font-semibold text-lg">
+                          {new Date(dayBooking.date).toLocaleDateString('en-CA', { weekday: 'long' })} ({dayBooking.date})
                         </div>
-                      ))}
-                    </div>
-                    
-                    <div className="flex justify-between items-center">
-                      <div className="text-sm text-gray-600 dark:text-gray-300">
-                        <span className="font-semibold">{dayBooking.mealCount} meals</span> for the day
+                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          dayBooking.status === 'booked' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {dayBooking.status === 'booked' ? 'Confirmed' : 'Pending Payment'}
+                        </div>
                       </div>
-                      <div className="text-lg font-bold text-gray-900 dark:text-white">
-                        Total: ₹{dayBooking.totalAmount}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                        {dayBooking.bookings.map(booking => (
+                          <div key={booking._id} className="bg-white dark:bg-gray-700 rounded p-3 shadow">
+                            <div className="font-bold capitalize text-sm">{booking.mealId?.mealType}</div>
+                            <div className="text-gray-600 dark:text-gray-300 text-xs mt-1">
+                              {Array.isArray(booking.mealId?.items) ? booking.mealId.items.map(i => i.name).join(', ') : ''}
+                            </div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                              ₹{booking.mealId?.price || 0} | {booking.mealId?.isVegetarian ? 'Veg' : 'Non-Veg'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="flex justify-between items-center">
+                        <div className="text-sm text-gray-600 dark:text-gray-300">
+                          <span className="font-semibold">{dayBooking.mealCount} meals</span> for the day
+                        </div>
+                        <div className="text-lg font-bold text-gray-900 dark:text-white">
+                          Total: ₹{dayBooking.totalAmount}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>
@@ -362,18 +375,18 @@ const MealsPage = () => {
                 <div className="text-center text-sm text-gray-600 dark:text-gray-300">
                   <div>UPI ID: {UPI_ID}</div>
                   <div>Name: {UPI_NAME}</div>
-                </div>
-              </div>
+      </div>
+    </div>
               
               <div className="space-y-3">
-                <input
-                  type="text"
+        <input
+          type="text"
                   placeholder="Enter Transaction ID"
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
                   id="transactionId"
                 />
                 <div className="flex space-x-3">
-                  <button
+          <button 
                     onClick={() => {
                       const txnId = document.getElementById('transactionId').value;
                       handlePaySubmit(txnId);
@@ -381,14 +394,14 @@ const MealsPage = () => {
                     className="flex-1 bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500"
                   >
                     Submit Payment
-                  </button>
-                  <button
+          </button>
+          <button 
                     onClick={() => setPayModal({ ...payModal, open: false })}
                     className="flex-1 bg-gray-500 text-white py-2 px-4 rounded-md hover:bg-gray-600 focus:outline-none focus:ring-2 focus:ring-gray-500"
-                  >
+          >
                     Cancel
-                  </button>
-                </div>
+          </button>
+        </div>
               </div>
             </div>
           </div>

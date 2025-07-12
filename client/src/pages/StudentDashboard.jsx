@@ -20,6 +20,8 @@ const StudentDashboard = () => {
   const [dayBookings, setDayBookings] = useState([]);
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [searchDay, setSearchDay] = useState('');
+  const [searchPayment, setSearchPayment] = useState('');
 
   useEffect(() => {
     if (!user) return;
@@ -219,47 +221,59 @@ const StudentDashboard = () => {
         {/* My Day Bookings */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 mb-8 transition-colors duration-300">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">My Day Bookings</h2>
+          <input
+            type="text"
+            placeholder="Find by day or date (e.g. Monday or 2025-07-13)"
+            value={searchDay}
+            onChange={e => setSearchDay(e.target.value)}
+            className="mb-4 px-3 py-2 border rounded w-full max-w-xs text-sm"
+          />
           {dayBookings.length === 0 ? (
             <div className="text-gray-500 text-center py-8">No day bookings yet. Book your first day to get started!</div>
           ) : (
-            <div className="space-y-4">
-              {dayBookings.map((dayBooking) => (
-                <div key={dayBooking.date} className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4">
-                  <div className="flex justify-between items-center mb-3">
-                    <div className="font-semibold text-lg">
-                      {new Date(dayBooking.date).toLocaleDateString('en-CA', { weekday: 'long' })} ({dayBooking.date})
-                    </div>
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      dayBooking.status === 'booked' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {dayBooking.status === 'booked' ? 'Confirmed' : 'Pending Payment'}
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
-                    {dayBooking.bookings.map(booking => (
-                      <div key={booking._id} className="bg-white dark:bg-gray-700 rounded p-3 shadow">
-                        <div className="font-bold capitalize text-sm">{booking.mealId?.mealType}</div>
-                        <div className="text-gray-600 dark:text-gray-300 text-xs mt-1">
-                          {Array.isArray(booking.mealId?.items) ? booking.mealId.items.map(i => i.name).join(', ') : ''}
-                        </div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          ₹{booking.mealId?.price || 0} | {booking.mealId?.isVegetarian ? 'Veg' : 'Non-Veg'}
-                        </div>
+            <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+              {dayBookings
+                .filter(dayBooking => {
+                  if (!searchDay) return true;
+                  const dayName = new Date(dayBooking.date).toLocaleDateString('en-US', { weekday: 'long' });
+                  return dayName.toLowerCase().includes(searchDay.toLowerCase()) ||
+                    dayBooking.date.includes(searchDay);
+                })
+                .map((dayBooking) => (
+                  <div key={dayBooking.date} className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-4 mb-4">
+                    <div className="flex justify-between items-center mb-3">
+                      <div className="font-semibold text-lg">
+                        {new Date(dayBooking.date).toLocaleDateString('en-CA', { weekday: 'long' })} ({dayBooking.date})
                       </div>
-                    ))}
-                  </div>
-                  
-                  <div className="flex justify-between items-center">
-                    <div className="text-sm text-gray-600 dark:text-gray-300">
-                      <span className="font-semibold">{dayBooking.mealCount} meals</span> for the day
+                      <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                        dayBooking.status === 'booked' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                      }`}>
+                        {dayBooking.status === 'booked' ? 'Confirmed' : 'Pending Payment'}
+                      </div>
                     </div>
-                    <div className="text-lg font-bold text-gray-900 dark:text-white">
-                      Total: ₹{dayBooking.totalAmount}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+                      {dayBooking.bookings.map(booking => (
+                        <div key={booking._id} className="bg-white dark:bg-gray-700 rounded p-3 shadow">
+                          <div className="font-bold capitalize text-sm">{booking.mealId?.mealType}</div>
+                          <div className="text-gray-600 dark:text-gray-300 text-xs mt-1">
+                            {Array.isArray(booking.mealId?.items) ? booking.mealId.items.map(i => i.name).join(', ') : ''}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                            ₹{booking.mealId?.price || 0} | {booking.mealId?.isVegetarian ? 'Veg' : 'Non-Veg'}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <div className="text-sm text-gray-600 dark:text-gray-300">
+                        <span className="font-semibold">{dayBooking.mealCount} meals</span> for the day
+                      </div>
+                      <div className="text-lg font-bold text-gray-900 dark:text-white">
+                        Total: ₹{dayBooking.totalAmount}
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>
@@ -267,26 +281,58 @@ const StudentDashboard = () => {
         {/* Recent Payments */}
         <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
           <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-4">Recent Payments</h2>
+          <input
+            type="text"
+            placeholder="Find by meal day, meal date, payment date, or amount"
+            value={searchPayment}
+            onChange={e => setSearchPayment(e.target.value)}
+            className="mb-4 px-3 py-2 border rounded w-full max-w-xs text-sm"
+          />
           {payments.length === 0 ? (
             <div className="text-gray-500 text-center py-8">No payments found.</div>
           ) : (
-            <div className="space-y-4">
-              {payments.slice(0, 5).map(payment => (
-                <div key={payment._id} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
-                  <div>
-                    <p className="font-semibold text-gray-900 dark:text-white">{payment.description}</p>
-                    <p className="text-sm text-gray-600 dark:text-gray-300">{new Date(payment.createdAt).toLocaleDateString()}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-bold text-gray-900 dark:text-white">₹{payment.amount}</p>
-                    <span className={`text-xs px-2 py-1 rounded-full ${
-                      payment.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-                    }`}>
-                      {payment.status}
-                    </span>
-                  </div>
-                </div>
-              ))}
+            <div style={{ maxHeight: '350px', overflowY: 'auto' }}>
+              {Object.entries(
+                payments.reduce((acc, payment) => {
+                  // Use payment.dueDate as the meal day, fallback to createdAt
+                  const mealDateRaw = payment.dueDate || payment.createdAt;
+                  const mealDateObj = new Date(mealDateRaw);
+                  const mealDate = mealDateObj.toISOString().slice(0, 10); // Always YYYY-MM-DD
+                  if (!acc[mealDate]) acc[mealDate] = { ...payment, amount: 0, mealDateRaw };
+                  acc[mealDate].amount += payment.amount;
+                  return acc;
+                }, {})
+              )
+                .filter(([mealDate, payment]) => {
+                  if (!searchPayment) return true;
+                  const mealDayName = new Date(payment.mealDateRaw).toLocaleDateString('en-US', { weekday: 'long' });
+                  const paymentDate = new Date(payment.createdAt).toISOString().slice(0, 10);
+                  return mealDayName.toLowerCase().includes(searchPayment.toLowerCase()) ||
+                    mealDate.includes(searchPayment) ||
+                    paymentDate.includes(searchPayment) ||
+                    String(payment.amount).includes(searchPayment);
+                })
+                .slice(0, 50)
+                .map(([mealDate, payment]) => {
+                  const dayName = new Date(payment.mealDateRaw).toLocaleDateString('en-US', { weekday: 'long' });
+                  const paymentDate = new Date(payment.createdAt).toISOString().slice(0, 10);
+                  return (
+                    <div key={mealDate} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg mb-2">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">Day meal payment ({dayName}, {mealDate})</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Payment date: {paymentDate}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900 dark:text-white">₹{payment.amount}</p>
+                        <span className={`text-xs px-2 py-1 rounded-full ${
+                          payment.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
+                        }`}>
+                          {payment.status}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
             </div>
           )}
         </div>
