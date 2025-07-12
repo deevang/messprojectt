@@ -34,6 +34,18 @@ exports.isAdmin = (req, res, next) => {
   next();
 };
 
+exports.isStaffHead = (req, res, next) => {
+  if (!req.user) {
+    return res.status(401).json({ error: 'Authentication required' });
+  }
+  
+  if (req.user.role !== 'admin' && req.user.role !== 'staff_head') {
+    return res.status(403).json({ error: 'Staff head access required' });
+  }
+  
+  next();
+};
+
 exports.isMessStaff = (req, res, next) => {
   if (!req.user) {
     return res.status(401).json({ error: 'Authentication required' });

@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { mealsAPI, aiAPI, weeklyMealPlanAPI } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import toast from 'react-hot-toast';
 import { Plus, Trash2, Edit, Zap, Calendar } from 'lucide-react';
 
 const ManageMealsPage = () => {
+  const { user } = useAuth();
   const [meals, setMeals] = useState([]);
   // State for form data
   const [formData, setFormData] = useState({

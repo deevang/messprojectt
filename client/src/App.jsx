@@ -11,6 +11,7 @@ import ManageMealsPage from './pages/ManageMealsPage';
 import ManageStudentsPage from './pages/ManageStudentsPage';
 import ManagePaymentsPage from './pages/ManagePaymentsPage';
 import ManageFeedbackPage from './pages/ManageFeedbackPage';
+import StudentFeedbackPage from './pages/StudentFeedbackPage';
 import MessWorkerDashboard from './pages/MessWorkerDashboard';
 import MealsPage from './pages/MealsPage';
 import StudentsPage from './pages/StudentsPage';
@@ -78,6 +79,16 @@ const AppRoutes = () => {
         <Route path="/admin/feedback" element={
           <ProtectedRoute allowedRoles={['admin']}>
             <ManageFeedbackPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/manage-feedback" element={
+          <ProtectedRoute allowedRoles={['admin', 'staff_head']}>
+            <ManageFeedbackPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/student-feedback" element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <StudentFeedbackPage />
           </ProtectedRoute>
         } />
         <Route path="/mess-staff" element={

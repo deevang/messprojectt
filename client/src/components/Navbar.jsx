@@ -9,9 +9,11 @@ import {
   LogOut, 
   Settings, 
   Bell,
-  ChevronDown
+  ChevronDown,
+  MessageSquare
 } from 'lucide-react';
 import DarkModeToggle from '../components/DarkModeToggle';
+import NotificationBell from './NotificationBell';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -83,6 +85,21 @@ const Navbar = () => {
                     Students
                   </Link>
                 )}
+                {user && (
+                  <button
+                    onClick={() => {
+                      if (user.role === 'student') {
+                        window.location.href = '/student-feedback';
+                      } else {
+                        window.location.href = '/manage-feedback';
+                      }
+                    }}
+                    className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1"
+                  >
+                    <MessageSquare className="w-4 h-4" />
+                    <span>Feedback</span>
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -90,6 +107,9 @@ const Navbar = () => {
           {/* User Menu */}
           <div className="hidden md:flex items-center space-x-4">
             <DarkModeToggle />
+            {user && (
+              <NotificationBell user={user} />
+            )}
             {user ? (
               <div className="relative">
                 <button
@@ -130,7 +150,6 @@ const Navbar = () => {
               </div>
             ) : (
               <div className="flex items-center space-x-4">
-                <DarkModeToggle />
                 <Link
                   to="/login"
                   className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-800 dark:hover:to-purple-800 transition-all duration-200"
@@ -210,6 +229,22 @@ const Navbar = () => {
                     >
                       Students
                     </Link>
+                  )}
+                  {user && (
+                    <button
+                      onClick={() => {
+                        setIsOpen(false);
+                        if (user.role === 'student') {
+                          window.location.href = '/student-feedback';
+                        } else {
+                          window.location.href = '/manage-feedback';
+                        }
+                      }}
+                      className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white block px-3 py-2 rounded-md text-base font-medium transition-colors flex items-center space-x-2 w-full text-left"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      <span>Feedback</span>
+                    </button>
                   )}
                   
                   {/* Mobile User Info */}

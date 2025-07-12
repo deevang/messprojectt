@@ -98,7 +98,24 @@ export const feedbackAPI = {
   delete: (id) => api.delete(`/feedback/${id}`),
   getByUser: () => api.get('/feedback/my-feedback'),
   getStats: () => api.get('/feedback/stats'),
-  respond: (id, response) => api.put(`/feedback/${id}/respond`, { adminResponse: response }),
+  respond: (id, responseData) => api.put(`/feedback/${id}/respond`, responseData),
+  
+  // Admin endpoints
+  getUnreadCountAdmin: () => api.get('/feedback/unread-count-admin'),
+  markAsReadAdmin: (id) => api.put(`/feedback/${id}/mark-read-admin`),
+  markMultipleAsReadAdmin: (feedbackIds) => api.post('/feedback/mark-multiple-read-admin', { feedbackIds }),
+  
+  // Staff endpoints
+  getAllStaff: (params) => api.get('/feedback/staff', { params }),
+  getStatsStaff: () => api.get('/feedback/staff/stats'),
+  getUnreadCountStaff: () => api.get('/feedback/unread-count-staff'),
+  respondStaff: (id, responseData) => api.put(`/feedback/staff/${id}/respond`, responseData),
+  markAsReadStaff: (id) => api.put(`/feedback/staff/${id}/mark-read-staff`),
+  markMultipleAsReadStaff: (feedbackIds) => api.post('/feedback/staff/mark-multiple-read-staff', { feedbackIds }),
+  
+  // Student endpoints
+  getUnreadCountStudent: () => api.get('/feedback/unread-count-student'),
+  markAsReadStudent: (id) => api.put(`/feedback/${id}/mark-read-student`)
 };
 
 // Students API (Admin only)
