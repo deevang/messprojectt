@@ -4,6 +4,8 @@ import toast from 'react-hot-toast';
 import { User, Phone, Briefcase, IndianRupee, Edit2, CheckCircle2, Calendar as CalendarIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { io } from 'socket.io-client';
+import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 const MessWorkerDashboard = () => {
   const { user } = useAuth();
@@ -30,6 +32,7 @@ const MessWorkerDashboard = () => {
   const [editingPlan, setEditingPlan] = useState(false);
   const [planLoading, setPlanLoading] = useState(false);
   const [paymentStats, setPaymentStats] = useState({ totalAmount: 0 });
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'staff_head') {
@@ -264,6 +267,58 @@ const MessWorkerDashboard = () => {
     }
   };
 
+  const handleDownloadExcel = () => {
+    const year = Number(attendanceMonth.split('-')[0]);
+    const month = Number(attendanceMonth.split('-')[1]) - 1;
+    const daysInMonth = getDaysInMonth(year, month);
+    const data = filteredStaff.map(member => {
+      const staffAttendance = attendance.find(a => a._id === member._id);
+      const presentDays = (staffAttendance?.attendance || []).length;
+      const absentDays = daysInMonth - presentDays;
+      const paidLeaves = Math.min(absentDays, 3);
+      const unpaidAbsences = Math.max(absentDays - 3, 0);
+      const dailySalary = member.salary ? member.salary / daysInMonth : 0;
+      const payableSalary = Math.round(dailySalary * (presentDays + paidLeaves));
+      const outstanding = Math.max(payableSalary - (member.salaryPaid || 0), 0);
+      return {
+        'Staff Name': member.name,
+        'Position': member.position,
+        'Salary': member.salary,
+        'Salary Payable': payableSalary,
+        'Salary Paid': member.salaryPaid || 0,
+        'Outstanding': outstanding,
+        'Present': presentDays,
+        'Absent': absentDays,
+        'Paid Leaves': paidLeaves,
+        'Unpaid Absences': unpaidAbsences,
+      };
+    });
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Salary Report');
+    const fileName = `Salary_Report_${attendanceMonth}.xlsx`;
+    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'array' });
+    const blob = new Blob([wbout], { type: 'application/octet-stream' });
+    saveAs(blob, fileName);
+    toast.success('Excel downloaded!');
+  };
+
+  // Filtered staff for search
+  const filteredStaff = staff.filter(member => {
+    if (!searchTerm) return true;
+    const term = searchTerm.toLowerCase();
+    return (
+      (member.name && member.name.toLowerCase().includes(term)) ||
+      (member._id && String(member._id).toLowerCase().includes(term))
+    );
+  });
+
+  const [year, month] = attendanceMonth.split('-');
+  const now = new Date();
+  const selectedDate = new Date(Number(year), Number(month) - 1);
+  const isFutureMonth = selectedDate > new Date(now.getFullYear(), now.getMonth());
+  const hasRecords = attendance && attendance.length > 0 && staff && staff.length > 0 && attendance.some(a => a.attendance && a.attendance.length > 0);
+
   return (
     <div className="min-h-screen bg-background dark:bg-gray-950 transition-colors duration-300">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -296,59 +351,121 @@ const MessWorkerDashboard = () => {
             staff.length === 0 ? (
               <div className="text-center text-lg text-gray-500 dark:text-gray-400 py-12">No staff members found.</div>
             ) : (
+              <>
+              {/* Controls above the table */}
+              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2 mb-4">
+                <div className="flex items-center gap-2">
+                  <input
+                    type="month"
+                    value={attendanceMonth}
+                    onChange={e => setAttendanceMonth(e.target.value)}
+                    className="border rounded px-3 py-1"
+                  />
+                  <input
+                    type="text"
+                    placeholder="Search by name or ID"
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                    className="border rounded px-3 py-1 ml-2"
+                  />
+                </div>
+                <button
+                  onClick={handleDownloadExcel}
+                  className="px-4 py-2 bg-blue-600 text-white rounded shadow hover:bg-blue-700"
+                >
+                  Download Excel
+                </button>
+              </div>
+              {/* Table scrollable container */}
               <div className="overflow-x-auto rounded-xl shadow">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 rounded-2xl overflow-hidden shadow-lg">
-                  <thead className="bg-gray-50 dark:bg-gray-800">
-                    <tr>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
+                  {isFutureMonth ? (
+                  <div className="text-center text-lg text-gray-500 py-8">No records for future months.</div>
+                ) : !hasRecords ? (
+                  <div className="text-center text-lg text-gray-500 py-8">No records for this month.</div>
+                ) : (
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 rounded-2xl overflow-hidden shadow-lg">
+                      <thead className="bg-gray-50 dark:bg-gray-800">
+                        <tr>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
                         <span className="flex items-center gap-1"><User className="inline w-4 h-4 text-blue-500" />Name</span>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
                         <span className="flex items-center gap-1"><Briefcase className="inline w-4 h-4 text-purple-500" />Position</span>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
                         <span className="flex items-center gap-1"><Phone className="inline w-4 h-4 text-green-500" />Phone</span>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">Role</th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">Role</th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
                         <span className="flex items-center gap-1"><IndianRupee className="inline w-4 h-4 text-blue-700" />Salary</span>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider select-none whitespace-nowrap"><span className="flex items-center gap-1"><IndianRupee className="inline w-4 h-4 text-orange-700" />Salary Payable</span></th>
+                        <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
                         <span className="flex items-center gap-1"><CheckCircle2 className="inline w-4 h-4 text-green-700" />Salary Paid</span>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
                         <span className="flex items-center gap-1"><IndianRupee className="inline w-4 h-4 text-red-700" />Outstanding</span>
                       </th>
-                      <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                    {staff.map((member) => (
-                      <tr key={member._id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group align-middle">
-                        <td className="px-4 py-3 whitespace-nowrap text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2 select-none">
-                          <User className="w-5 h-5 text-blue-400 group-hover:text-blue-600 transition" />
-                          {member.name}
-                        </td>
-                        <td className="px-4 py-3 whitespace-nowrap text-base text-gray-700 dark:text-gray-200 select-none">{member.position || '-'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-base text-gray-700 dark:text-gray-200 select-none">{member.phoneNumber || '-'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-base text-gray-700 dark:text-gray-200 select-none">{member.role === 'staff_head' ? 'Staff Head' : 'Staff'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-base text-blue-700 dark:text-blue-400 font-bold select-none">₹{member.salary?.toLocaleString() || '0'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-base text-green-700 dark:text-green-400 font-bold select-none">₹{member.salaryPaid?.toLocaleString() || '0'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-base text-red-700 dark:text-red-400 font-bold select-none">₹{member.outstandingSalary?.toLocaleString() || '0'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-base flex items-center justify-center gap-2 select-none">
-                          <button className="px-3 py-1 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center gap-1 shadow-sm" onClick={() => openEditModal(member)}>
-                            <Edit2 className="w-4 h-4" /> Edit
-                          </button>
-                          <button className="px-3 py-1 bg-green-600 dark:bg-green-700 text-white rounded hover:bg-green-700 dark:hover:bg-green-800 transition-colors flex items-center gap-1 shadow-sm" onClick={() => openSalaryModal(member)}>
-                            <CheckCircle2 className="w-4 h-4" /> Mark Paid
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                          <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
+                        {filteredStaff.map((member) => (
+                          <tr key={member._id} className="hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors group align-middle">
+                            <td className="px-4 py-3 whitespace-nowrap text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2 select-none">
+                              <User className="w-5 h-5 text-blue-400 group-hover:text-blue-600 transition" />
+                              {member.name}
+                            </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-700 dark:text-gray-200 select-none">{member.position || '-'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-700 dark:text-gray-200 select-none">{member.phoneNumber || '-'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-base text-gray-700 dark:text-gray-200 select-none">{member.role === 'staff_head' ? 'Staff Head' : 'Staff'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-base text-blue-700 dark:text-blue-400 font-bold select-none">₹{member.salary?.toLocaleString() || '0'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-base text-orange-700 font-bold select-none">
+                            {(() => {
+                              const year = Number(attendanceMonth.split('-')[0]);
+                              const month = Number(attendanceMonth.split('-')[1]) - 1;
+                              const daysInMonth = getDaysInMonth(year, month);
+                              const staffAttendance = attendance.find(a => a._id === member._id);
+                              const presentDays = (staffAttendance?.attendance || []).length;
+                              const absentDays = daysInMonth - presentDays;
+                              const paidLeaves = Math.min(absentDays, 3);
+                              const dailySalary = member.salary ? member.salary / daysInMonth : 0;
+                              const payableSalary = Math.round(dailySalary * (presentDays + paidLeaves));
+                              return `₹${payableSalary.toLocaleString()}`;
+                            })()}
+                          </td>
+                          <td className="px-4 py-3 whitespace-nowrap text-base text-green-700 dark:text-green-400 font-bold select-none">₹{member.salaryPaid?.toLocaleString() || '0'}</td>
+                            <td className="px-4 py-3 whitespace-nowrap text-base text-red-700 dark:text-red-400 font-bold select-none">
+                            {(() => {
+                              const year = Number(attendanceMonth.split('-')[0]);
+                              const month = Number(attendanceMonth.split('-')[1]) - 1;
+                              const daysInMonth = getDaysInMonth(year, month);
+                              const staffAttendance = attendance.find(a => a._id === member._id);
+                              const presentDays = (staffAttendance?.attendance || []).length;
+                              const absentDays = daysInMonth - presentDays;
+                              const paidLeaves = Math.min(absentDays, 3);
+                              const dailySalary = member.salary ? member.salary / daysInMonth : 0;
+                              const payableSalary = Math.round(dailySalary * (presentDays + paidLeaves));
+                              const outstanding = Math.max(payableSalary - (member.salaryPaid || 0), 0);
+                              return `₹${outstanding.toLocaleString()}`;
+                            })()}
+                          </td>
+                            <td className="px-4 py-3 whitespace-nowrap text-base flex items-center justify-center gap-2 select-none">
+                              <button className="px-3 py-1 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center gap-1 shadow-sm" onClick={() => openEditModal(member)}>
+                                <Edit2 className="w-4 h-4" /> Edit
+                              </button>
+                              <button className="px-3 py-1 bg-green-600 dark:bg-green-700 text-white rounded hover:bg-green-700 dark:hover:bg-green-800 transition-colors flex items-center gap-1 shadow-sm" onClick={() => openSalaryModal(member)}>
+                                <CheckCircle2 className="w-4 h-4" /> Mark Paid
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
               </div>
-            )
+              </>
+          )
           ) : user?.role === 'staff_head' ? (
             staff.length === 0 ? (
               <div className="text-center text-lg text-gray-500 dark:text-gray-400 py-12">No staff members found.</div>

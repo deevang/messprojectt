@@ -112,29 +112,7 @@ exports.updateBooking = async (req, res) => {
 };
 
 exports.deleteBooking = async (req, res) => {
-  try {
-    const booking = await Booking.findById(req.params.id);
-    if (!booking) {
-      return res.status(404).json({ error: 'Booking not found' });
-    }
-    
-    if (booking.userId.toString() !== req.user.userId && req.user.role !== 'admin') {
-      return res.status(403).json({ error: 'Not authorized to delete this booking' });
-    }
-    
-    // Mark as cancelled instead of deleting
-    await Booking.findByIdAndUpdate(req.params.id, { 
-      status: 'cancelled',
-      cancelledAt: new Date()
-    });
-    
-    // Update meal booking count
-    await Meal.findByIdAndUpdate(booking.mealId, { $inc: { currentBookings: -1 } });
-    
-    res.json({ message: 'Booking cancelled successfully' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+  return res.status(403).json({ error: 'Cancelling a meal booking is not allowed.' });
 };
 
 exports.getBookingsByDate = async (req, res) => {
@@ -311,6 +289,124 @@ exports.getRecentBookingsWithPayments = async (req, res) => {
       };
     });
     res.json(result);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// Book all meals for a specific day
+exports.createDayBooking = async (req, res) => {
+  try {
+    const { date, specialRequests } = req.body;
+    
+    if (!date) {
+      return res.status(400).json({ error: 'Date is required' });
+    }
+    
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    const nextDay = new Date(targetDate);
+    nextDay.setDate(targetDate.getDate() + 1);
+    
+    // Find all available meals for the specified date
+    const meals = await Meal.find({
+      date: { $gte: targetDate, $lt: nextDay },
+      isAvailable: true
+    });
+    
+    if (!meals.length) {
+      return res.status(404).json({ error: 'No meals available for this date' });
+    }
+    
+    // Check if user already has bookings for this date
+    const existingBookings = await Booking.find({
+      userId: req.user.userId,
+      date: { $gte: targetDate, $lt: nextDay },
+      status: { $nin: ['cancelled', 'deleted'] }
+    });
+    
+    if (existingBookings.length > 0) {
+      return res.status(400).json({ error: 'You have already booked meals for this date' });
+    }
+    
+    // Check capacity for all meals
+    for (const meal of meals) {
+      if (meal.currentBookings >= meal.maxCapacity) {
+        return res.status(400).json({ error: `${meal.mealType} is fully booked for this date` });
+      }
+    }
+    
+    // Create bookings for all meals
+    const bookings = [];
+    let totalAmount = 0;
+    
+    for (const meal of meals) {
+      const booking = await Booking.create({
+        userId: req.user.userId,
+        mealId: meal._id,
+        date: meal.date,
+        mealType: meal.mealType,
+        specialRequests: specialRequests || `Day booking for ${date}`,
+        price: meal.price,
+        status: 'pending'
+      });
+      
+      // Update meal booking count
+      await Meal.findByIdAndUpdate(meal._id, { $inc: { currentBookings: 1 } });
+      
+      bookings.push(booking);
+      totalAmount += meal.price;
+    }
+    
+    res.status(201).json({
+      bookings,
+      totalAmount,
+      date: targetDate,
+      mealCount: bookings.length,
+      message: `Successfully booked ${bookings.length} meals for ${date}`
+    });
+  } catch (err) {
+    res.status(400).json({ error: err.message });
+  }
+};
+
+// Get day-based bookings for a user
+exports.getDayBookingsByUser = async (req, res) => {
+  try {
+    const bookings = await Booking.find({ 
+      userId: req.user.userId,
+      status: { $nin: ['cancelled', 'deleted'] }
+    })
+      .populate('mealId')
+      .sort({ date: -1 });
+    
+    // Group bookings by date
+    const dayBookings = {};
+    bookings.forEach(booking => {
+      const dateStr = new Date(booking.date).toISOString().slice(0, 10);
+      if (!dayBookings[dateStr]) {
+        dayBookings[dateStr] = {
+          date: dateStr,
+          bookings: [],
+          totalAmount: 0,
+          mealCount: 0,
+          status: 'pending'
+        };
+      }
+      dayBookings[dateStr].bookings.push(booking);
+      dayBookings[dateStr].totalAmount += booking.price || 0;
+      dayBookings[dateStr].mealCount += 1;
+      
+      // Update status - if any booking is 'booked', the day is 'booked'
+      if (booking.status === 'booked') {
+        dayBookings[dateStr].status = 'booked';
+      }
+    });
+    
+    // Convert to array and sort by date
+    const dayBookingsArray = Object.values(dayBookings).sort((a, b) => new Date(b.date) - new Date(a.date));
+    
+    res.json(dayBookingsArray);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -5,12 +5,15 @@ const Booking = require('../models/Booking');
 exports.createPayment = async (req, res) => {
   try {
     const { amount, paymentType, dueDate, month, year, description, mealId, transactionId, paymentMethod, status, bookingId } = req.body;
-    
+    // Ensure dueDate is set and required
+    if (!dueDate) {
+      return res.status(400).json({ error: 'dueDate (meal day) is required for payment.' });
+    }
     const payment = await Payment.create({
       userId: req.user.userId, // Use authenticated user's ID
       amount,
       paymentType: paymentType || (mealId ? 'daily' : undefined),
-      dueDate: dueDate ? new Date(dueDate) : undefined,
+      dueDate: new Date(dueDate),
       month: month || (dueDate ? new Date(dueDate).getMonth() + 1 : new Date().getMonth() + 1),
       year: year || (dueDate ? new Date(dueDate).getFullYear() : new Date().getFullYear()),
       description,
@@ -119,8 +122,12 @@ exports.getPaymentsByUser = async (req, res) => {
   try {
     const payments = await Payment.find({ userId: req.user.userId })
       .sort({ createdAt: -1 });
-    
-    res.json(payments);
+    // Always include dueDate in the response
+    const paymentsWithDueDate = payments.map(p => ({
+      ...p.toObject(),
+      dueDate: p.dueDate
+    }));
+    res.json(paymentsWithDueDate);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

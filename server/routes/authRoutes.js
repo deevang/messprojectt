@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { register, login, getProfile, updateProfile, changePassword, resetPassword, getAllStaff, updateStaff, markSalaryPaid, getStaffAttendance, updateStaffAttendance, getMyAttendance } = require('../controllers/authController');
+const { register, login, getProfile, updateProfile, changePassword, resetPassword, getAllStaff, updateStaff, markSalaryPaid, getStaffAttendance, updateStaffAttendance, getMyAttendance, updateRole, getPendingHeadStaff, approveHeadStaff, getNotifications, markNotificationRead } = require('../controllers/authController');
 const { verifyToken, isAdmin } = require('../middleware/authMiddleware');
 const { isMessStaff } = require('../middleware/authMiddleware');
 const passport = require('passport');
@@ -11,6 +11,7 @@ router.post('/login', login);
 router.get('/profile', verifyToken, getProfile);
 router.put('/profile', verifyToken, updateProfile);
 router.put('/change-password', verifyToken, changePassword);
+router.put('/update-role', verifyToken, updateRole);
 router.post('/reset-password', resetPassword);
 router.get('/staff', verifyToken, isMessStaff, getAllStaff);
 router.put('/staff/:id', verifyToken, isAdmin, updateStaff);
@@ -24,18 +25,67 @@ router.get('/google', passport.authenticate('google', { scope: ['profile', 'emai
 
 // Google OAuth callback
 router.get('/google/callback',
-  passport.authenticate('google', { failureRedirect: '/login' }),
+  passport.authenticate('google', { 
+    failureRedirect: '/login',
+    failureFlash: true 
+  }),
   (req, res) => {
-    // Issue JWT
+    console.log('Google OAuth callback triggered');
     const user = req.user;
-    const token = jwt.sign(
-      { userId: user._id, role: user.role },
-      process.env.JWT_SECRET || 'your_jwt_secret',
-      { expiresIn: '7d' }
-    );
-    // Redirect to frontend with token
-    res.redirect(`http://localhost:5173?token=${token}`);
+    console.log('Google callback user:', user);
+    
+    if (!user) {
+      console.error('No user found in Google callback');
+      return res.redirect('/login');
+    }
+    
+    try {
+      // For new users with 'pending' role, include 'pending' in the token
+      // For existing users, include their actual role
+      const tokenRole = user.role === 'pending' ? 'pending' : user.role;
+      
+      const token = jwt.sign(
+        { userId: user._id, role: tokenRole },
+        process.env.JWT_SECRET || 'your_jwt_secret',
+        { expiresIn: '7d' }
+      );
+      console.log('Generated JWT token for user:', user.email);
+      console.log('Token payload:', { userId: user._id, role: tokenRole });
+      
+      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      
+      // If user has pending role, redirect to role selection page
+      if (user.role === 'pending') {
+        const redirectUrl = `${frontendUrl}/role-selection?token=${token}`;
+        console.log('New user detected, redirecting to role selection:', redirectUrl);
+        res.redirect(redirectUrl);
+      } else {
+        // Existing user, redirect to home with token
+        const redirectUrl = `${frontendUrl}?token=${token}`;
+        console.log('Existing user, redirecting to home:', redirectUrl);
+        res.redirect(redirectUrl);
+      }
+    } catch (error) {
+      console.error('Error generating JWT token:', error);
+      res.redirect('/login');
+    }
   }
 );
+
+// Google OAuth failure handler
+router.get('/google/failure', (req, res) => {
+  console.error('Google OAuth authentication failed');
+  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
+});
+
+// Head Staff approval workflow routes (admin only)
+router.get('/pending-headstaff', verifyToken, isAdmin, getPendingHeadStaff);
+router.post('/approve-headstaff/:userId', verifyToken, isAdmin, approveHeadStaff);
+router.post('/reject-headstaff/:userId', verifyToken, isAdmin, require('../controllers/authController').rejectHeadStaff);
+
+// Notification routes (admin only)
+router.get('/notifications', verifyToken, isAdmin, getNotifications);
+router.post('/notifications/mark-read/:id', verifyToken, isAdmin, markNotificationRead);
 
 module.exports = router;

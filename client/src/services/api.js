@@ -45,6 +45,10 @@ export const authAPI = {
   updateProfile: (profileData) => api.put('/auth/profile', profileData),
   changePassword: (passwordData) => api.put('/auth/change-password', passwordData),
   resetPassword: (email) => api.post('/auth/reset-password', { email }),
+  updateRole: (role) => api.put('/auth/update-role', { role }),
+  getPendingHeadStaff: () => api.get('/auth/pending-headstaff'),
+  approveHeadStaff: (userId) => api.post(`/auth/approve-headstaff/${userId}`),
+  rejectHeadStaff: (userId, reason) => api.post(`/auth/reject-headstaff/${userId}`, { reason }),
 };
 
 // Meals API
@@ -57,20 +61,22 @@ export const mealsAPI = {
   getByDate: (date) => api.get(`/meals/date/${date}`),
   getByType: (type) => api.get(`/meals/type/${type}`),
   book: (mealId, bookingData) => api.post(`/meals/book/${mealId}`, bookingData),
-  cancelBooking: (bookingId) => api.put(`/meals/cancel-booking/${bookingId}`),
   getMyBookings: () => api.get('/meals/my-bookings'),
   getStats: () => api.get('/meals/stats'),
   createDefaultWeek: () => api.post('/meals/create-default-week'),
+  getMealsForNext7Days: () => api.get('/meals/next-7-days'),
 };
 
 // Bookings API
 export const bookingsAPI = {
   create: (bookingData) => api.post('/bookings', bookingData),
+  createDayBooking: (date, specialRequests) => api.post('/bookings/day', { date, specialRequests }),
   getAll: (params) => api.get('/bookings', { params }),
   update: (id, bookingData) => api.put(`/bookings/${id}`, bookingData),
   delete: (id) => api.delete(`/bookings/${id}`),
   getByDate: (date) => api.get(`/bookings/date/${date}`),
   getByUser: () => api.get('/bookings/my-bookings'),
+  getDayBookingsByUser: () => api.get('/bookings/my-day-bookings'),
   markAsConsumed: (id) => api.put(`/bookings/${id}/consume`),
   bookTodayFromPlan: () => api.post('/bookings/book-today-from-plan'),
   bookWeekFromPlan: () => api.post('/bookings/book-week-from-plan'),

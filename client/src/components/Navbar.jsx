@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { 
   Utensils, 
@@ -20,6 +20,8 @@ const Navbar = () => {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const isRoleSelection = location.pathname === '/role-selection';
 
   const handleLogout = () => {
     logout();
@@ -44,141 +46,150 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex items-center space-x-8">
-            <Link 
-              to="/" 
-              className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              Home
-            </Link>
-            
-            {user && (
-              <>
+          {/* Only show dark mode toggle and nothing else on role selection page */}
+          {isRoleSelection ? (
+            <div className="flex items-center">
+              <DarkModeToggle />
+            </div>
+          ) : (
+            <>
+              {/* Desktop Navigation */}
+              <div className="hidden md:flex items-center space-x-8">
                 <Link 
-                  to={user.role === 'admin' ? '/admin' : user.role === 'staff_head' ? '/head-staff' : '/student'} 
+                  to="/" 
                   className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
                 >
-                  Dashboard
+                  Home
                 </Link>
-                {(user.role === 'admin' || user.role === 'mess_staff' || user.role === 'staff_head') && (
-                  <Link 
-                    to="/mess-staff" 
-                    className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                  >
-                    Staff Dashboard
-                  </Link>
-                )}
-                {user.role !== 'admin' && user.role !== 'staff_head' && (
-                  <Link 
-                    to="/meals" 
-                    className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                  >
-                    Meals
-                  </Link>
-                )}
-                {user.role === 'admin' && (
-                  <Link 
-                    to="/students" 
-                    className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
-                  >
-                    Students
-                  </Link>
-                )}
+                
                 {user && (
-                  <button
-                    onClick={() => {
-                      if (user.role === 'student') {
-                        window.location.href = '/student-feedback';
-                      } else {
-                        window.location.href = '/manage-feedback';
-                      }
-                    }}
-                    className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1"
-                  >
-                    <MessageSquare className="w-4 h-4" />
-                    <span>Feedback</span>
-                  </button>
-                )}
-              </>
-            )}
-          </div>
-
-          {/* User Menu */}
-          <div className="hidden md:flex items-center space-x-4">
-            <DarkModeToggle />
-            {user && (
-              <NotificationBell user={user} />
-            )}
-            {user ? (
-              <div className="relative">
-                <button
-                  onClick={toggleProfile}
-                  className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg p-2 transition-colors"
-                >
-                  <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 rounded-full flex items-center justify-center">
-                    <User className="w-4 h-4 text-white" />
-                  </div>
-                  <span className="text-sm font-medium">{user.name}</span>
-                  <ChevronDown className="w-4 h-4" />
-                </button>
-
-                {isProfileOpen && (
-                  <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50 transition-colors">
-                    <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-300">{user.email}</p>
-                      <p className="text-xs text-gray-500 dark:text-gray-300 capitalize">{user.role}</p>
-                    </div>
-                    <Link
-                      to="/profile"
-                      className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
-                      onClick={() => setIsProfileOpen(false)}
+                  <>
+                    <Link 
+                      to={user.role === 'admin' ? '/admin' : user.role === 'staff_head' ? '/head-staff' : '/student'} 
+                      className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
                     >
-                      <Settings className="w-4 h-4 mr-2" />
-                      Profile Settings
+                      Dashboard
                     </Link>
+                    {(user.role === 'admin' || user.role === 'mess_staff' || user.role === 'staff_head') && (
+                      <Link 
+                        to="/mess-staff" 
+                        className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                      >
+                        Staff Dashboard
+                      </Link>
+                    )}
+                    {user.role !== 'admin' && user.role !== 'staff_head' && (
+                      <Link 
+                        to="/meals" 
+                        className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                      >
+                        Meals
+                      </Link>
+                    )}
+                    {user.role === 'admin' && (
+                      <Link 
+                        to="/students" 
+                        className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors"
+                      >
+                        Students
+                      </Link>
+                    )}
+                    {user && (
+                      <button
+                        onClick={() => {
+                          if (user.role === 'student') {
+                            window.location.href = '/student-feedback';
+                          } else {
+                            window.location.href = '/manage-feedback';
+                          }
+                        }}
+                        className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1"
+                      >
+                        <MessageSquare className="w-4 h-4" />
+                        <span>Feedback</span>
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+
+              {/* User Menu */}
+              <div className="hidden md:flex items-center space-x-4">
+                <DarkModeToggle />
+                {user && (
+                  <NotificationBell user={user} />
+                )}
+                {user ? (
+                  <div className="relative">
                     <button
-                      onClick={handleLogout}
-                      className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                      onClick={toggleProfile}
+                      className="flex items-center space-x-2 text-gray-700 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg p-2 transition-colors"
                     >
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Sign out
+                      <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 rounded-full flex items-center justify-center">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                      <span className="text-sm font-medium">{user.name}</span>
+                      <ChevronDown className="w-4 h-4" />
                     </button>
+
+                    {isProfileOpen && (
+                      <div className="absolute right-0 mt-2 w-48 bg-white dark:bg-gray-800 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50 transition-colors">
+                        <div className="px-4 py-2 border-b border-gray-100 dark:border-gray-700">
+                          <p className="text-sm font-medium text-gray-900 dark:text-white">{user.name}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-300">{user.email}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-300 capitalize">{user.role}</p>
+                        </div>
+                        <Link
+                          to="/profile"
+                          className="flex items-center px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                          onClick={() => setIsProfileOpen(false)}
+                        >
+                          <Settings className="w-4 h-4 mr-2" />
+                          Profile Settings
+                        </Link>
+                        <button
+                          onClick={handleLogout}
+                          className="flex items-center w-full px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4 mr-2" />
+                          Sign out
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="flex items-center space-x-4">
+                    <Link
+                      to="/login"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-800 dark:hover:to-purple-800 transition-all duration-200"
+                    >
+                      Sign in
+                    </Link>
+                    <Link
+                      to="/register"
+                      className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-800 dark:hover:to-purple-800 transition-all duration-200"
+                    >
+                      Sign Up
+                    </Link>
                   </div>
                 )}
               </div>
-            ) : (
-              <div className="flex items-center space-x-4">
-                <Link
-                  to="/login"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-800 dark:hover:to-purple-800 transition-all duration-200"
-                >
-                  Sign in
-                </Link>
-                <Link
-                  to="/register"
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 text-white px-4 py-2 rounded-lg text-sm font-medium hover:from-blue-700 hover:to-purple-700 dark:hover:from-blue-800 dark:hover:to-purple-800 transition-all duration-200"
-                >
-                  Sign Up
-                </Link>
-              </div>
-            )}
-          </div>
 
-          {/* Mobile menu button */}
-          <div className="md:hidden">
-            <button
-              onClick={toggleMenu}
-              className="text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg p-2"
-            >
-              {isOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
-            </button>
-          </div>
+              {/* Mobile menu button */}
+              <div className="md:hidden">
+                <button
+                  onClick={toggleMenu}
+                  className="text-gray-600 hover:text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 rounded-lg p-2"
+                >
+                  {isOpen ? (
+                    <X className="w-6 h-6" />
+                  ) : (
+                    <Menu className="w-6 h-6" />
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
 
         {/* Mobile Navigation */}

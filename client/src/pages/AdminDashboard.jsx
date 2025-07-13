@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { studentsAPI, mealsAPI, paymentsAPI, weeklyMealPlanAPI, expenseAPI, bookingsAPI, staffAPI } from '../services/api';
+import { studentsAPI, mealsAPI, paymentsAPI, weeklyMealPlanAPI, expenseAPI, bookingsAPI, staffAPI, authAPI } from '../services/api';
 import { 
   Users, 
   Utensils, 
@@ -11,7 +11,15 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+function getNext7DaysUTC() {
+  const days = [];
+  const today = new Date();
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate() + i));
+    days.push(d.toISOString().slice(0, 10));
+  }
+  return days;
+}
 
 const AdminDashboard = () => {
   const { user } = useAuth();
@@ -51,11 +59,17 @@ const AdminDashboard = () => {
   const [totalStaffSalary, setTotalStaffSalary] = useState(0);
 
   const [recentBookings, setRecentBookings] = useState([]);
+  const [searchBooking, setSearchBooking] = useState("");
 
   // State for meals chart (read-only)
   const [meals, setMeals] = useState([]);
   const [bookings, setBookings] = useState([]);
   const [mealsChartLoading, setMealsChartLoading] = useState(false);
+
+  const [pendingHeadStaff, setPendingHeadStaff] = useState([]);
+  const [pendingLoading, setPendingLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
 
   const handleEditMeal = (idx) => {
     setEditMealIdx(idx);
@@ -90,6 +104,8 @@ const AdminDashboard = () => {
     fetchStaff();
     fetchRecentBookingsWithPayments();
     fetchWeeklyMealsChart();
+    fetchPendingHeadStaff();
+    fetchNotifications();
   }, []);
 
   const fetchDashboardData = async () => {
@@ -178,35 +194,63 @@ const AdminDashboard = () => {
   const fetchWeeklyMealsChart = async () => {
     if (!user) return;
     setMealsChartLoading(true);
-    const today = new Date();
-    const startOfWeek = new Date(today);
-    startOfWeek.setDate(today.getDate() - today.getDay());
-    const endOfWeek = new Date(today);
-    endOfWeek.setDate(today.getDate() + (6 - today.getDay()));
-    const startDate = startOfWeek.toISOString().slice(0, 10);
-    const endDate = endOfWeek.toISOString().slice(0, 10);
-    
     try {
-      const [mealsRes, bookingsRes] = await Promise.all([
-        mealsAPI.getAll({ startDate, endDate }),
-        bookingsAPI.getAll({ startDate, endDate })
-      ]);
-      
-      let data = mealsRes.data.meals || mealsRes.data;
-      if (!Array.isArray(data)) data = [];
-      data.sort((a, b) => {
-        const dateA = new Date(a.date);
-        const dateB = new Date(b.date);
-        if (dateA - dateB !== 0) return dateA - dateB;
-        return (a.mealType || '').localeCompare(b.mealType || '');
-      });
+      const mealsRes = await mealsAPI.getMealsForNext7Days();
+      const data = mealsRes.data.meals || mealsRes.data || [];
+      console.log('API meals response:', data); // Debug log
       setMeals(data);
-      setBookings(bookingsRes.data.bookings || bookingsRes.data || []);
+      // Remove or comment out any setMeals([]) or setMeals(somethingElse) after this line
     } catch (err) {
       setMeals([]);
       setBookings([]);
     } finally {
       setMealsChartLoading(false);
+    }
+  };
+
+  const fetchPendingHeadStaff = async () => {
+    setPendingLoading(true);
+    try {
+      const res = await authAPI.getPendingHeadStaff();
+      setPendingHeadStaff(res.data || []);
+    } catch (err) {
+      setPendingHeadStaff([]);
+    } finally {
+      setPendingLoading(false);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    setNotificationsLoading(true);
+    try {
+      const res = await authAPI.getNotifications();
+      setNotifications(res.data || []);
+    } catch (err) {
+      setNotifications([]);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  };
+
+  const handleApproveHeadStaff = async (userId) => {
+    try {
+      await authAPI.approveHeadStaff(userId);
+      toast.success('Head staff approved!');
+      fetchPendingHeadStaff();
+    } catch (err) {
+      toast.error('Failed to approve head staff');
+    }
+  };
+
+  const handleRejectHeadStaff = async (userId) => {
+    const reason = prompt('Enter a reason for rejection (optional):');
+    try {
+      await authAPI.rejectHeadStaff(userId, reason);
+      toast.success('Head staff request rejected!');
+      fetchPendingHeadStaff();
+      fetchNotifications();
+    } catch (err) {
+      toast.error('Failed to reject head staff');
     }
   };
 
@@ -218,10 +262,10 @@ const AdminDashboard = () => {
     const targetDayIdx = daysOfWeek.indexOf(dayName);
     const targetDate = new Date(startOfWeek);
     targetDate.setDate(startOfWeek.getDate() + targetDayIdx);
-    return targetDate.toISOString().slice(0, 10);
+    return targetDate.toLocaleDateString('en-CA');
   };
 
-  const getBookingsForDay = (dateStr) => bookings.filter(b => b.mealId && b.mealId.date && b.mealId.date.slice(0, 10) === dateStr);
+  const getBookingsForDay = (dateStr) => bookings.filter(b => b.mealId && b.mealId.date && new Date(b.mealId.date).toLocaleDateString('en-CA') === dateStr);
 
   useEffect(() => {
     setTotalProfit(stats.totalRevenue - (totalExpenses + totalSalaries));
@@ -263,6 +307,71 @@ const AdminDashboard = () => {
           </div>
         </div>
 
+        {/* Pending Head Staff Requests */}
+        {pendingHeadStaff.length > 0 && (
+          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-8">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Pending Head Staff Approvals</h2>
+            {pendingLoading ? (
+              <div className="flex items-center justify-center py-4">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : (
+              <ul className="space-y-4">
+                {pendingHeadStaff.map((pending) => (
+                  <li key={pending._id} className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                    <div>
+                      <div className="font-semibold text-gray-900 dark:text-white">{pending.name} ({pending.email})</div>
+                      <div className="text-sm text-gray-600 dark:text-gray-300">Requested Head Staff access</div>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleApproveHeadStaff(pending._id)}
+                        className="px-4 py-2 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-all"
+                      >
+                        Approve
+                      </button>
+                      <button
+                        onClick={() => handleRejectHeadStaff(pending._id)}
+                        className="px-4 py-2 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-all"
+                      >
+                        Reject
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
+
+        {/* Notification History */}
+        {/* <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Notification History</h2>
+          {notificationsLoading ? (
+            <div className="flex items-center justify-center py-4">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+            </div>
+          ) : notifications.filter(n => n.status === 'approved' || n.status === 'rejected').length === 0 ? (
+            <div className="text-gray-600 dark:text-gray-300">No notification history.</div>
+          ) : (
+            <ul className="space-y-4">
+              {notifications.filter(n => n.status === 'approved' || n.status === 'rejected').map((n) => (
+                <li key={n._id} className="flex items-center justify-between bg-gray-100 dark:bg-gray-800 rounded-lg p-4">
+                  <div>
+                    <div className="font-semibold text-gray-900 dark:text-white">{n.message}</div>
+                    <div className="text-sm text-gray-600 dark:text-gray-300">
+                      Status: <span className={n.status === 'approved' ? 'text-green-600' : 'text-red-600'}>{n.status}</span>
+                      {n.actionedBy && n.actionedAt && (
+                        <span> &middot; By Admin at {new Date(n.actionedAt).toLocaleString()}</span>
+                      )}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div> */}
+
         {/* Weekly Meals Chart - Read Only for Admin */}
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-8">
           <div className="mb-6">
@@ -280,53 +389,37 @@ const AdminDashboard = () => {
                 <thead className="bg-gray-50 dark:bg-gray-700">
                   <tr>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Day</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Breakfast</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Lunch</th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Dinner</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Bookings</th>
+                   
                   </tr>
                 </thead>
                 <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
-                  {daysOfWeek.map(day => {
-                    const dateStr = getDateForDay(day);
-                    const dayMeals = meals.filter(m => daysOfWeek[new Date(m.date).getDay()] === day);
+                  {getNext7DaysUTC().map(dateStr => {
+                    // Debug: print what meals are being considered for this date
+                    const dayMeals = meals.filter(m => m.date && m.date.slice(0, 10) === dateStr);
+                    console.log('Meals for', dateStr, ':', dayMeals);
                     const mealsObj = {
-                      breakfast: dayMeals.find(m => m.mealType === 'breakfast'),
-                      lunch: dayMeals.find(m => m.mealType === 'lunch'),
-                      dinner: dayMeals.find(m => m.mealType === 'dinner'),
+                      breakfast: dayMeals.find(m => m.mealType && m.mealType.toLowerCase() === 'breakfast'),
+                      lunch: dayMeals.find(m => m.mealType && m.mealType.toLowerCase() === 'lunch'),
+                      dinner: dayMeals.find(m => m.mealType && m.mealType.toLowerCase() === 'dinner'),
                     };
-                    const bookingsForDay = getBookingsForDay(dateStr);
-                    
                     return (
-                      <tr key={day} className="hover:bg-gray-50 dark:hover:bg-gray-700">
-                        <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">{day}</td>
-                        {['breakfast', 'lunch', 'dinner'].map(type => (
-                          <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300" key={type}>
-                            {mealsObj[type] ? (
-                              <div>
-                                <div className="font-medium">
-                                  {mealsObj[type].items?.map(item => item.name).join(', ') || mealsObj[type].description}
-                                </div>
-                                <div className="text-xs text-gray-500">
-                                  ₹{mealsObj[type].price} | {mealsObj[type].isVegetarian ? 'Veg' : 'Non-Veg'}
-                                </div>
-                              </div>
-                            ) : (
-                              <span className="text-gray-400">No meal set</span>
-                            )}
-                          </td>
-                        ))}
+                      <tr key={dateStr}>
+                        <td className="px-6 py-4 font-bold text-gray-900 dark:text-white">
+                          {new Date(dateStr).toLocaleDateString('en-CA', { weekday: 'long' })}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">{dateStr}</td>
                         <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">
-                          {bookingsForDay.length > 0 ? (
-                            <div>
-                              <div className="font-medium">{bookingsForDay.length} bookings</div>
-                              <div className="text-xs text-gray-500">
-                                {bookingsForDay.filter(b => b.status === 'booked').length} confirmed
-                              </div>
-                            </div>
-                          ) : (
-                            <span className="text-gray-400">No bookings</span>
-                          )}
+                          {mealsObj.breakfast ? mealsObj.breakfast.items.map(i => i.name).join(', ') : 'No meal set'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">
+                          {mealsObj.lunch ? mealsObj.lunch.items.map(i => i.name).join(', ') : 'No meal set'}
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-900 dark:text-gray-300">
+                          {mealsObj.dinner ? mealsObj.dinner.items.map(i => i.name).join(', ') : 'No meal set'}
                         </td>
                       </tr>
                     );
@@ -339,34 +432,69 @@ const AdminDashboard = () => {
 
         {/* Recent Bookings (Combined) */}
         <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Bookings</h2>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-              <thead className="bg-gray-100 dark:bg-gray-900">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Student</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">No. of Meals</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Amount</th>
-                  <th className="px-6 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider">Date & Time</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                {recentBookings.length === 0 ? (
-                  <tr><td colSpan="4" className="text-center">No recent bookings found.</td></tr>
-                ) : recentBookings.map((booking, idx) => (
-                  <tr key={idx}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900 dark:text-white">{booking.student}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">{booking.meals}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">₹{booking.amount}</td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-200">{new Date(booking.time).toLocaleString()}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className="mb-4">
+            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Recent Bookings</h2>
+            <div className="flex justify-end">
+              <input
+                type="text"
+                className="w-full md:w-72 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="Search by meal day, date, or amount"
+                value={searchBooking}
+                onChange={e => setSearchBooking(e.target.value)}
+              />
+            </div>
           </div>
-          <p className="text-sm text-gray-500 dark:text-gray-300 mt-2">
-            This table shows the recent bookings made by each student, including payment info.
-          </p>
+          {recentBookings.length === 0 ? (
+            <div className="text-gray-500 text-center py-8">No recent bookings found.</div>
+          ) : (
+            <div style={{ maxHeight: '260px', overflowY: 'auto' }} className="space-y-4">
+              {/* Group bookings by date and show only one total per day */}
+              {Object.entries(
+                recentBookings.reduce((acc, booking) => {
+                  // Use booking.date as the meal day, fallback to time
+                  const mealDateRaw = booking.date || booking.time;
+                  const mealDateObj = new Date(mealDateRaw);
+                  const mealDate = mealDateObj.toISOString().slice(0, 10); // Always YYYY-MM-DD
+                  if (!acc[mealDate]) acc[mealDate] = { ...booking, amount: 0, meals: 0, mealDateRaw, count: 0, bookingTime: booking.time };
+                  acc[mealDate].amount += booking.amount;
+                  acc[mealDate].meals += booking.meals || 0;
+                  acc[mealDate].count += 1;
+                  return acc;
+                }, {})
+              )
+                .filter(([mealDate, booking]) => {
+                  const dayName = new Date(booking.mealDateRaw).toLocaleDateString('en-US', { weekday: 'long' });
+                  const bookingDate = new Date(booking.bookingTime).toISOString().slice(0, 10);
+                  const search = searchBooking.toLowerCase();
+                  return (
+                    dayName.toLowerCase().includes(search) ||
+                    mealDate.includes(search) ||
+                    bookingDate.includes(search) ||
+                    booking.amount.toString().includes(search)
+                  );
+                })
+                .slice(0, 3)
+                .map(([mealDate, booking]) => {
+                  const dayName = new Date(booking.mealDateRaw).toLocaleDateString('en-US', { weekday: 'long' });
+                  const bookingDate = new Date(booking.bookingTime).toISOString().slice(0, 10);
+                  return (
+                    <div key={mealDate} className="flex justify-between items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white">Day meal bookings ({dayName}, {mealDate})</p>
+                        <p className="text-sm text-gray-600 dark:text-gray-300">Booking date: {bookingDate} | {booking.meals} meals</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="font-bold text-gray-900 dark:text-white">₹{booking.amount}</p>
+                        <span className="text-xs px-2 py-1 rounded-full bg-yellow-100 text-yellow-800">
+                          {/* Status not available, so just a dot */}
+                          ●
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
         </div>
 
         {/* Stats Cards */}

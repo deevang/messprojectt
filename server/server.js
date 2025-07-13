@@ -18,6 +18,11 @@ const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: '*' } });
 app.set('io', io);
 
+// Passport session and initialization
+app.use(session({ secret: 'your_secret', resave: false, saveUninitialized: true }));
+app.use(passport.initialize());
+app.use(passport.session());
+
 // Import routes
 const authRoutes = require('./routes/authRoutes');
 const mealRoutes = require('./routes/mealRoutes');
@@ -37,10 +42,6 @@ app.use(express.urlencoded({ extended: true }));
 
 // Static files
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
-
-app.use(session({ secret: 'your_secret', resave: false, saveUninitialized: true }));
-app.use(passport.initialize());
-app.use(passport.session());
 
 // Routes
 app.use('/api/auth', authRoutes);

@@ -16,7 +16,8 @@ const {
   updateWeeklyMealPlan,
   addExpense,
   getExpenses,
-  createDefaultMealsForWeek
+  createDefaultMealsForWeek,
+  getMealsForNext7Days
 } = require('../controllers/mealController');
 const { verifyToken, isAdmin } = require('../middleware/authMiddleware');
 
@@ -25,11 +26,11 @@ router.get('/', getAllMeals);
 router.get('/date/:date', getMealsByDate);
 router.get('/type/:type', getMealsByType);
 router.get('/stats', getMealStats);
+router.get('/next-7-days', getMealsForNext7Days);
 
 // Protected routes
 router.get('/my-bookings', verifyToken, getMyBookings);
 router.post('/book/:mealId', verifyToken, bookMeal);
-router.put('/cancel-booking/:bookingId', verifyToken, cancelBooking);
 router.get('/weekly-plan', verifyToken, (req, res, next) => {
   console.log('Route /api/meals/weekly-plan hit');
   next();

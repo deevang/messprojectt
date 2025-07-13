@@ -20,4 +20,6 @@ const mealSchema = new mongoose.Schema({
   preparedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
+mealSchema.index({ date: 1, mealType: 1 }, { unique: true });
+
 module.exports = mongoose.model('Meal', mealSchema);
