@@ -23,7 +23,14 @@ const userSchema = new mongoose.Schema({
   paymentStatus: { type: String, enum: ['paid', 'pending', 'overdue'], default: 'pending' },
   monthlyFee: { type: Number, default: 0 },
   idProofType: { type: String },
-  idProofNumber: { type: String }
+  idProofNumber: { type: String },
+  emailVerified: {
+    type: Boolean,
+    default: false,
+  },
+  emailVerificationToken: {
+    type: String,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model('User', userSchema);

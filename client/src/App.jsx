@@ -18,6 +18,8 @@ import StudentsPage from './pages/StudentsPage';
 import ProfilePage from './pages/ProfilePage';
 import HeadStaffDashboard from './pages/HeadStaffDashboard';
 import RoleSelectionPage from './pages/RoleSelectionPage';
+import SetPasswordPage from './pages/SetPasswordPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -123,6 +125,8 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } />
         <Route path="/role-selection" element={<RoleSelectionPage />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

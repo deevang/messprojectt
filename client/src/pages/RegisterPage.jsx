@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, Phone, Home, Utensils } from 'lucide-react';
+import { Dialog } from '@headlessui/react';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -20,6 +21,7 @@ const RegisterPage = () => {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [showVerifyModal, setShowVerifyModal] = useState(false);
 
   const { register, handleGoogleAuth } = useAuth();
   const navigate = useNavigate();
@@ -148,7 +150,7 @@ const RegisterPage = () => {
     try {
       const result = await register(formData);
       if (result.success) {
-        navigate('/login');
+        setShowVerifyModal(true);
       }
     } catch (error) {
       console.error('Registration error:', error);
@@ -488,6 +490,22 @@ const RegisterPage = () => {
             </div>
           </div>
         </div>
+        {/* Email Verification Modal */}
+        <Dialog open={showVerifyModal} onClose={() => {}} className="fixed z-50 inset-0 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="fixed inset-0 bg-black bg-opacity-40" aria-hidden="true" />
+            <Dialog.Panel className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-md w-full p-8 mx-auto flex flex-col items-center border border-gray-200 dark:border-gray-700">
+              <Dialog.Title className="text-2xl font-bold text-blue-700 dark:text-blue-400 mb-4 text-center">Verify Your Email</Dialog.Title>
+              <p className="text-gray-700 dark:text-gray-200 text-center mb-6">We’ve sent a verification link to <span className="font-semibold">{formData.email}</span>.<br />Please check your inbox and verify your email before logging in.</p>
+              <button
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold text-lg shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200 mt-2"
+                onClick={() => navigate('/login')}
+              >
+                Go to Login
+              </button>
+            </Dialog.Panel>
+          </div>
+        </Dialog>
       </div>
     </div>
   );

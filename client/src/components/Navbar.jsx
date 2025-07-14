@@ -22,6 +22,7 @@ const Navbar = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isRoleSelection = location.pathname === '/role-selection';
+  const isSetPassword = location.pathname === '/set-password';
 
   const handleLogout = () => {
     logout();
@@ -46,8 +47,8 @@ const Navbar = () => {
             </Link>
           </div>
 
-          {/* Only show dark mode toggle and nothing else on role selection page */}
-          {isRoleSelection ? (
+          {/* Only show dark mode toggle and nothing else on role selection or set password page */}
+          {(isRoleSelection || isSetPassword) ? (
             <div className="flex items-center">
               <DarkModeToggle />
             </div>

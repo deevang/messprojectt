@@ -48,9 +48,9 @@ export const AuthProvider = ({ children }) => {
     const urlParams = new URLSearchParams(window.location.search);
     const tokenFromUrl = urlParams.get('token');
     
-    // Don't process tokens if we're already on the role selection page
-    if (window.location.pathname === '/role-selection') {
-      console.log('Already on role selection page, skipping token processing');
+    // Don't process tokens if we're already on the role selection or set password page
+    if (window.location.pathname === '/role-selection' || window.location.pathname === '/set-password') {
+      console.log('Already on role selection or set password page, skipping token processing');
       return;
     }
     

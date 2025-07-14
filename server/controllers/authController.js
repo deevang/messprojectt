@@ -2,6 +2,47 @@ const jwt = require('jsonwebtoken');
 const bcrypt = require('bcrypt');
 const User = require('../models/User');
 const Notification = require('../models/Notification');
+const nodemailer = require('nodemailer');
+const crypto = require('crypto');
+
+// Helper to send verification email
+async function sendVerificationEmail(user, req) {
+  const token = user.emailVerificationToken;
+  const verifyUrl = `${req.protocol}://${req.get('host')}/api/auth/verify-email?token=${token}`;
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: user.email,
+    subject: 'Verify your email',
+    html: `<p>Click <a href="${verifyUrl}">here</a> to verify your email.</p>`
+  });
+}
+
+// Helper to send password reset email
+async function sendResetEmail(user, req) {
+  const token = user.emailVerificationToken;
+  const resetUrl = `${process.env.FRONTEND_URL}/set-password?token=${token}`;
+  const nodemailer = require('nodemailer');
+  const transporter = nodemailer.createTransport({
+    service: 'gmail',
+    auth: {
+      user: process.env.EMAIL_USER,
+      pass: process.env.EMAIL_PASS,
+    },
+  });
+  await transporter.sendMail({
+    from: process.env.EMAIL_USER,
+    to: user.email,
+    subject: 'Reset your password',
+    html: `<p>Click <a href="${resetUrl}">here</a> to reset your password.</p>`
+  });
+}
 
 exports.register = async (req, res) => {
   console.log('Register request body:', req.body);
@@ -15,6 +56,7 @@ exports.register = async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
+    const emailVerificationToken = crypto.randomBytes(32).toString('hex');
     const newUser = await User.create({ 
       name, 
       email, 
@@ -26,14 +68,35 @@ exports.register = async (req, res) => {
       dietaryRestrictions,
       position,
       idProofType,
-      idProofNumber
+      idProofNumber,
+      emailVerified: false,
+      emailVerificationToken
     });
+    console.log('Sending verification email with token:', newUser.emailVerificationToken);
+    await sendVerificationEmail(newUser, req);
 
     res.status(201).json({ 
-      message: 'User registered successfully'
+      message: 'User registered successfully. Please check your email to verify your account.'
     });
   } catch (err) {
     res.status(400).json({ error: err.message });
+  }
+};
+
+// Email verification endpoint
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { token } = req.query;
+    console.log('Verifying email with token:', token);
+    const user = await User.findOne({ emailVerificationToken: token });
+    console.log('User found for token:', user ? user.email : 'none');
+    if (!user) return res.status(400).send('Invalid or expired verification token.');
+    user.emailVerified = true;
+    user.emailVerificationToken = undefined;
+    await user.save();
+    res.send('Email verified successfully! You can now log in.');
+  } catch (err) {
+    res.status(500).send('Server error.');
   }
 };
 
@@ -43,6 +106,7 @@ exports.login = async (req, res) => {
     const { email, password } = req.body;
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user.emailVerified) return res.status(403).json({ error: 'Please verify your email before logging in.' });
     if (user.role === 'mess_staff') {
       return res.status(403).json({ error: 'Regular mess staff cannot log in.' });
     }
@@ -149,16 +213,15 @@ exports.updateRole = async (req, res) => {
       user.role = 'pending_staff_head';
       user.pendingRole = 'staff_head';
       await user.save();
-      // Create notification for all admins
-      const admins = await User.find({ role: 'admin' });
+      // Create notification for all admins (new format)
       const notification = await Notification.create({
-        type: 'headstaff_approval',
+        type: 'head_staff_request',
         message: `${user.name} (${user.email}) has requested Head Staff access.`,
-        user: user._id,
-        recipients: admins.map(a => a._id),
-        readBy: [],
+        sender: user._id,
+        isRead: false,
         status: 'pending'
       });
+      console.log('DEBUG: Created head_staff_request notification:', notification);
       return res.json({
         message: 'Head Staff request submitted. Wait for admin approval.',
         user
@@ -184,22 +247,60 @@ exports.updateRole = async (req, res) => {
   }
 };
 
+// Password reset via email link or request
 exports.resetPassword = async (req, res) => {
   try {
-    const { email } = req.body;
-    const user = await User.findOne({ email });
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+    const { email, token, password } = req.body;
+
+    // 1. If email is provided, send reset link
+    if (email) {
+      const user = await User.findOne({ email });
+      if (!user) return res.status(200).json({ message: 'If an account with that email exists, a reset link has been sent.' });
+      const crypto = require('crypto');
+      const resetToken = crypto.randomBytes(32).toString('hex');
+      user.emailVerificationToken = resetToken;
+      await user.save();
+      await sendResetEmail(user, req);
+      return res.json({ message: 'If an account with that email exists, a reset link has been sent.' });
     }
-    
-    // Generate temporary password
-    const tempPassword = Math.random().toString(36).slice(-8);
-    const hashedPassword = await bcrypt.hash(tempPassword, 10);
-    
-    await User.findByIdAndUpdate(user._id, { password: hashedPassword });
-    
-    // In a real application, you would send this via email
-    res.json({ message: 'Password reset successful. Check your email for new password.' });
+
+    // 2. If token and password are provided, reset password
+    if (token && password) {
+      if (password.length < 6) {
+        return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+      }
+      const user = await User.findOne({ emailVerificationToken: token });
+      if (!user) return res.status(400).json({ error: 'Invalid or expired reset token.' });
+      const bcrypt = require('bcryptjs');
+      const hashed = await bcrypt.hash(password, 10);
+      user.password = hashed;
+      user.emailVerificationToken = undefined;
+      user.emailVerified = true;
+      await user.save();
+      return res.json({ message: 'Password reset successfully.' });
+    }
+
+    // If neither, error
+    return res.status(400).json({ error: 'Token and new password are required.' });
+  } catch (err) {
+    res.status(500).json({ error: 'Server error.' });
+  }
+};
+
+// Set or update password for the logged-in user (after Google OAuth)
+exports.setPassword = async (req, res) => {
+  try {
+    console.log('setPassword called, req.user:', req.user);
+    const userId = req.user.userId;
+    const { password } = req.body;
+    if (!password || password.length < 6) {
+      return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+    }
+    const bcrypt = require('bcryptjs');
+    const hashed = await bcrypt.hash(password, 10);
+    const user = await User.findByIdAndUpdate(userId, { password: hashed }, { new: true });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json({ message: 'Password set successfully' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
