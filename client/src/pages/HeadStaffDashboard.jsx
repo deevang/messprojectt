@@ -644,7 +644,6 @@ const HeadStaffDashboard = () => {
                           exp.amount?.toString().includes(search)
                         );
                       })
-                      .slice(0, 3)
                       .map(exp => (
                         <tr key={exp._id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{exp.date?.slice(0,10)}</td>

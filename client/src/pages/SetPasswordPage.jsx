@@ -11,14 +11,15 @@ const SetPasswordPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
-  const isReset = !!token;
+  const isJwt = token && token.split('.').length === 3;
+  const isReset = !!token && !isJwt;
 
-  // Store token in localStorage if present and not a reset
+  // Store token in localStorage if present and isJwt (Google OAuth)
   useEffect(() => {
-    if (token && !isReset) {
+    if (token && isJwt) {
       localStorage.setItem('token', token);
     }
-  }, [token, isReset]);
+  }, [token, isJwt]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();

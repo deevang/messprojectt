@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { studentsAPI, mealsAPI, paymentsAPI, weeklyMealPlanAPI, expenseAPI, bookingsAPI, staffAPI, authAPI } from '../services/api';
 import { 
@@ -10,6 +10,7 @@ import {
   MessageSquare,
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { Dialog } from '@headlessui/react';
 
 function getNext7DaysUTC() {
   const days = [];
@@ -23,6 +24,7 @@ function getNext7DaysUTC() {
 
 const AdminDashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [recentStudents, setRecentStudents] = useState([]);
   const [upcomingMeals, setUpcomingMeals] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,6 +72,8 @@ const AdminDashboard = () => {
   const [pendingLoading, setPendingLoading] = useState(false);
   const [notifications, setNotifications] = useState([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
+  const [showExpenseModal, setShowExpenseModal] = useState(false);
+  const [searchExpense, setSearchExpense] = useState("");
 
   const handleEditMeal = (idx) => {
     setEditMealIdx(idx);
@@ -499,25 +503,41 @@ const AdminDashboard = () => {
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6">
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-lg transition-all"
+            onClick={() => setShowExpenseModal(true)}
+            title="Click to view expense details"
+          >
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Expenses</span>
               <span className="text-2xl font-bold text-gray-900 dark:text-white">₹{totalExpenses}</span>
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6">
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-lg transition-all"
+            onClick={() => navigate('/mess-staff')}
+            title="Go to Staff Dashboard"
+          >
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Staff Salary</span>
               <span className="text-2xl font-bold text-gray-900 dark:text-white">₹{totalStaffSalary}</span>
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6">
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-lg transition-all"
+            onClick={() => navigate('/mess-staff')}
+            title="Go to Staff Dashboard"
+          >
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Staff Salary Paid</span>
               <span className="text-2xl font-bold text-gray-900 dark:text-white">₹{totalSalaries}</span>
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6">
+          <div
+            className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-lg transition-all"
+            onClick={() => navigate('/admin/payments')}
+            title="Go to Payments Page"
+          >
             <div className="flex flex-col items-start">
               <span className="text-sm font-medium text-gray-500 dark:text-gray-300">Total Student Payments</span>
               <span className="text-2xl font-bold text-gray-900 dark:text-white">₹{stats.totalRevenue.toFixed(2)}</span>
@@ -525,6 +545,65 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+      {/* Expense Details Modal */}
+      <Dialog open={showExpenseModal} onClose={() => setShowExpenseModal(false)} className="fixed z-50 inset-0 overflow-y-auto">
+        <div className="flex items-center justify-center min-h-screen px-4">
+          <div className="fixed inset-0 bg-black bg-opacity-40" aria-hidden="true" />
+          <Dialog.Panel className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl max-w-2xl w-full p-8 mx-auto flex flex-col border border-gray-200 dark:border-gray-700">
+            <Dialog.Title className="text-2xl font-bold text-blue-700 dark:text-blue-400 mb-4 text-center">Expense Details</Dialog.Title>
+            {/* Search bar for expenses */}
+            <div className="mb-4 flex justify-end">
+              <input
+                type="text"
+                className="w-full md:w-72 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                placeholder="Search by description or amount"
+                value={searchExpense}
+                onChange={e => setSearchExpense(e.target.value)}
+              />
+            </div>
+            {expenseLoading ? (
+              <div className="flex justify-center items-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+              </div>
+            ) : expenses.length === 0 ? (
+              <div className="text-gray-500 text-center py-8">No expenses found.</div>
+            ) : (
+              <div className="overflow-x-auto max-h-[400px]" style={{overflowY: 'auto'}}>
+                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <thead className="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Date</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Description</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Amount</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    {expenses.filter(exp => {
+                      const search = searchExpense.toLowerCase();
+                      return (
+                        exp.description?.toLowerCase().includes(search) ||
+                        exp.amount.toString().includes(search)
+                      );
+                    }).map(exp => (
+                      <tr key={exp._id}>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-300">{new Date(exp.date).toLocaleDateString()}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-300">{exp.description || '-'}</td>
+                        <td className="px-4 py-2 text-sm text-gray-900 dark:text-gray-300">₹{exp.amount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            <button
+              className="mt-6 w-full bg-gradient-to-r from-blue-600 to-purple-600 text-white py-3 rounded-xl font-bold text-lg shadow-lg hover:from-blue-700 hover:to-purple-700 transition-all duration-200"
+              onClick={() => setShowExpenseModal(false)}
+            >
+              Close
+            </button>
+          </Dialog.Panel>
+        </div>
+      </Dialog>
     </div>
   );
 };

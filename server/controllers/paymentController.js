@@ -19,7 +19,7 @@ exports.createPayment = async (req, res) => {
       description,
       transactionId,
       paymentMethod,
-      status: 'completed', // always completed
+      status: status || 'pending', // allow pending or completed
       mealId,
       bookingId
     });

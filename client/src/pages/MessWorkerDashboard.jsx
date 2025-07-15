@@ -33,6 +33,9 @@ const MessWorkerDashboard = () => {
   const [planLoading, setPlanLoading] = useState(false);
   const [paymentStats, setPaymentStats] = useState({ totalAmount: 0 });
   const [searchTerm, setSearchTerm] = useState('');
+  // Add separate search states for each section
+  const [staffSearch, setStaffSearch] = useState("");
+  const [attendanceSearch, setAttendanceSearch] = useState("");
 
   useEffect(() => {
     if (user?.role === 'admin' || user?.role === 'staff_head') {
@@ -305,11 +308,12 @@ const MessWorkerDashboard = () => {
 
   // Filtered staff for search
   const filteredStaff = staff.filter(member => {
-    if (!searchTerm) return true;
-    const term = searchTerm.toLowerCase();
+    if (!staffSearch) return true;
+    const term = staffSearch.toLowerCase();
     return (
       (member.name && member.name.toLowerCase().includes(term)) ||
-      (member._id && String(member._id).toLowerCase().includes(term))
+      (member.phoneNumber && member.phoneNumber.toLowerCase().includes(term)) ||
+      (member.position && member.position.toLowerCase().includes(term))
     );
   });
 
@@ -318,6 +322,17 @@ const MessWorkerDashboard = () => {
   const selectedDate = new Date(Number(year), Number(month) - 1);
   const isFutureMonth = selectedDate > new Date(now.getFullYear(), now.getMonth());
   const hasRecords = attendance && attendance.length > 0 && staff && staff.length > 0 && attendance.some(a => a.attendance && a.attendance.length > 0);
+
+  // Filter attendance for search
+  const filteredAttendance = attendance.filter(staff => {
+    if (!attendanceSearch) return true;
+    const term = attendanceSearch.toLowerCase();
+    return (
+      (staff.name && staff.name.toLowerCase().includes(term)) ||
+      (staff.phoneNumber && staff.phoneNumber.toLowerCase().includes(term)) ||
+      (staff.position && staff.position.toLowerCase().includes(term))
+    );
+  });
 
   return (
     <div className="min-h-screen bg-background dark:bg-gray-950 transition-colors duration-300">
@@ -344,6 +359,18 @@ const MessWorkerDashboard = () => {
               </button>
             )}
           </div>
+          {/* Staff search input for all users except admin */}
+          {user?.role !== 'admin' && (
+            <div className="flex items-center gap-2 mb-4">
+              <input
+                type="text"
+                placeholder="Search by name, phone, or position"
+                value={staffSearch}
+                onChange={e => setStaffSearch(e.target.value)}
+                className="border rounded px-3 py-1"
+              />
+            </div>
+          )}
           
           {staffLoading ? (
             <div className="text-center text-lg text-gray-500 dark:text-gray-400 py-12 animate-pulse">Loading staff...</div>
@@ -363,9 +390,9 @@ const MessWorkerDashboard = () => {
                   />
                   <input
                     type="text"
-                    placeholder="Search by name or ID"
-                    value={searchTerm}
-                    onChange={e => setSearchTerm(e.target.value)}
+                    placeholder="Search by name, phone, or position"
+                    value={staffSearch}
+                    onChange={e => setStaffSearch(e.target.value)}
                     className="border rounded px-3 py-1 ml-2"
                   />
                 </div>
@@ -397,12 +424,9 @@ const MessWorkerDashboard = () => {
                           <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
                         <span className="flex items-center gap-1"><IndianRupee className="inline w-4 h-4 text-blue-700" />Salary</span>
                       </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 uppercase tracking-wider select-none whitespace-nowrap"><span className="flex items-center gap-1"><IndianRupee className="inline w-4 h-4 text-orange-700" />Salary Payable</span></th>
+                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-700  dark:text-white uppercase tracking-wider select-none whitespace-nowrap"><span className="flex items-center gap-1"><IndianRupee className="inline w-4 h-4 text-orange-700" />Salary Payable</span></th>
                         <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
                         <span className="flex items-center gap-1"><CheckCircle2 className="inline w-4 h-4 text-green-700" />Salary Paid</span>
-                      </th>
-                          <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
-                        <span className="flex items-center gap-1"><IndianRupee className="inline w-4 h-4 text-red-700" />Outstanding</span>
                       </th>
                           <th className="px-4 py-3 text-center text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">Actions</th>
                         </tr>
@@ -433,9 +457,6 @@ const MessWorkerDashboard = () => {
                                 {staffAttendance ? `₹${payableSalary.toLocaleString()}` : 'No attendance data'}
                               </td>
                               <td className="px-4 py-3 whitespace-nowrap text-base text-green-700 dark:text-green-400 font-bold select-none">₹{member.salaryPaid?.toLocaleString() || '0'}</td>
-                              <td className="px-4 py-3 whitespace-nowrap text-base text-red-700 dark:text-red-400 font-bold select-none">
-                                {staffAttendance ? `₹${outstanding.toLocaleString()}` : 'No attendance data'}
-                              </td>
                               <td className="px-4 py-3 whitespace-nowrap text-base flex items-center justify-center gap-2 select-none">
                                 <button className="px-3 py-1 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center gap-1 shadow-sm" onClick={() => openEditModal(member)}>
                                   <Edit2 className="w-4 h-4" /> Edit
@@ -476,9 +497,6 @@ const MessWorkerDashboard = () => {
                       <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
                         <span className="flex items-center gap-1"><CheckCircle2 className="inline w-4 h-4 text-green-700" />Salary Paid</span>
                       </th>
-                      <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
-                        <span className="flex items-center gap-1"><IndianRupee className="inline w-4 h-4 text-red-700" />Outstanding</span>
-                      </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
@@ -492,7 +510,6 @@ const MessWorkerDashboard = () => {
                         <td className="px-4 py-3 whitespace-nowrap text-base text-gray-700 dark:text-gray-200 select-none">{member.phoneNumber || '-'}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-base text-blue-700 dark:text-blue-400 font-bold select-none">₹{member.salary?.toLocaleString() || '0'}</td>
                         <td className="px-4 py-3 whitespace-nowrap text-base text-green-700 dark:text-green-400 font-bold select-none">₹{member.salaryPaid?.toLocaleString() || '0'}</td>
-                        <td className="px-4 py-3 whitespace-nowrap text-base text-red-700 dark:text-red-400 font-bold select-none">₹{member.outstandingSalary?.toLocaleString() || '0'}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -512,6 +529,16 @@ const MessWorkerDashboard = () => {
               value={attendanceMonth}
               onChange={e => setAttendanceMonth(e.target.value)}
               className="ml-auto border border-gray-300 dark:border-gray-600 rounded-lg px-3 py-2 text-gray-700 dark:text-gray-200 focus:ring-2 focus:ring-blue-400 bg-background dark:bg-gray-800"
+            />
+          </div>
+          {/* Add search input for attendance */}
+          <div className="flex items-center gap-2 mb-4">
+            <input
+              type="text"
+              placeholder="Search by name, phone, or position"
+              value={attendanceSearch}
+              onChange={e => setAttendanceSearch(e.target.value)}
+              className="border rounded px-3 py-1"
             />
           </div>
           
@@ -536,7 +563,7 @@ const MessWorkerDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                    {attendance.map(staff => {
+                    {filteredAttendance.map(staff => {
                       const year = Number(attendanceMonth.split('-')[0]);
                       const month = Number(attendanceMonth.split('-')[1]) - 1;
                       const daysInMonth = getDaysInMonth(year, month);
@@ -592,7 +619,7 @@ const MessWorkerDashboard = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white dark:bg-gray-900 divide-y divide-gray-200 dark:divide-gray-700">
-                    {attendance.map(staff => {
+                    {filteredAttendance.map(staff => {
                       const year = Number(attendanceMonth.split('-')[0]);
                       const month = Number(attendanceMonth.split('-')[1]) - 1;
                       const daysInMonth = getDaysInMonth(year, month);
@@ -615,7 +642,7 @@ const MessWorkerDashboard = () => {
                             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
                             const isPresent = attendanceSet.has(dateStr);
                             const isToday = new Date().toISOString().slice(0, 10) === dateStr;
-                            const canEdit = isToday && (staff._id === user._id || user.role === 'admin');
+                            const canEdit = isToday && (user.role === 'staff_head');
                             return (
                               <td key={i} className="px-1 py-2 text-center">
                                 {canEdit ? (
@@ -641,156 +668,6 @@ const MessWorkerDashboard = () => {
           ) : null}
         </div>
 
-        {/* Recent Payments Section */}
-        {/* {user?.role !== 'staff_head' && recentPayments.length > 0 && (
-          <div className="bg-white rounded-xl shadow p-6 mb-8">
-            <h2 className="text-2xl font-bold mb-4 text-blue-700 flex items-center gap-2">Recent Payments</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-blue-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Student</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Amount</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Date</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Status</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {recentPayments.map(p => (
-                    <tr key={p._id}>
-                      <td className="px-4 py-2">{p.student?.name || p.studentName || '-'}</td>
-                      <td className="px-4 py-2">₹{p.amount || '-'}</td>
-                      <td className="px-4 py-2">{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : '-'}</td>
-                      <td className="px-4 py-2">
-                        {p.status === 'pending_verification' ? (
-                          <span className="text-yellow-600 font-bold">Pending Verification</span>
-                        ) : p.status === 'paid' || p.status === 'completed' ? (
-                          <span className="text-green-600 font-bold">Paid</span>
-                        ) : (
-                          <span className="text-gray-600">{p.status}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2">
-                        {p.status === 'pending_verification' && (
-                          <button className="bg-green-500 text-white px-3 py-1 rounded" onClick={async () => {
-                            await paymentsAPI.update(p._id, { status: 'paid' });
-                            fetchRecentPayments();
-                          }}>Verify</button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )} */}
-
-        {/* Recent Bookings Section */}
-        {/* {user?.role !== 'staff_head' && recentBookings.length > 0 && (
-          <div className="bg-white rounded-xl shadow p-6 mb-8">
-            <h2 className="text-2xl font-bold mb-4 text-blue-700 flex items-center gap-2">Recent Bookings</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-blue-50">
-                  <tr>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Student</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Meal</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Date</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Amount</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Status</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold text-gray-700 uppercase">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-100">
-                  {recentBookings.map(b => (
-                    <tr key={b._id}>
-                      <td className="px-4 py-2">{b.student?.name || b.studentName || '-'}</td>
-                      <td className="px-4 py-2">{b.mealId?.items?.map(i => i.name).join(', ') || b.mealId?.description || '-'}</td>
-                      <td className="px-4 py-2">{b.mealId?.date ? new Date(b.mealId.date).toLocaleDateString() : '-'}</td>
-                      <td className="px-4 py-2">₹{b.amount || '-'}</td>
-                      <td className="px-4 py-2">
-                        {b.status === 'pending_verification' ? (
-                          <span className="text-yellow-600 font-bold">Pending Verification</span>
-                        ) : b.status === 'paid' || b.status === 'completed' ? (
-                          <span className="text-green-600 font-bold">Paid</span>
-                        ) : (
-                          <span className="text-gray-600">{b.status}</span>
-                        )}
-                      </td>
-                      <td className="px-4 py-2">
-                        {b.status === 'pending_verification' && (
-                          <button className="bg-green-500 text-white px-3 py-1 rounded" onClick={async () => {
-                            await bookingsAPI.update(b._id, { status: 'paid' });
-                            fetchRecentBookings();
-                          }}>Verify</button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )} */}
-
-        {/* Weekly Plan Section */}
-        {/* <div className="mt-12">
-          <div className="flex items-center gap-4 mb-4">
-            <CalendarIcon className="w-6 h-6 text-blue-600" />
-            <h2 className="text-2xl font-bold text-gray-900">Weekly Meal Plan</h2>
-            <button className="ml-auto px-3 py-1 bg-blue-500 text-white rounded hover:bg-blue-600 transition flex items-center gap-1 shadow-sm" onClick={() => setEditingPlan(true)} disabled={planLoading}>
-              {planLoading ? 'Loading...' : 'Edit Plan'}
-            </button>
-          </div>
-          {planLoading ? (
-            <div className="text-center text-lg text-gray-500 py-8 animate-pulse">Loading meal plan...</div>
-          ) : editingPlan ? (
-            <div className="bg-white rounded-xl shadow p-6">
-              <h3 className="text-xl font-bold mb-4 text-blue-700">Edit Weekly Meal Plan</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-7 gap-4">
-                {editWeeklyPlan.map((day, idx) => (
-                  <div key={idx} className="bg-blue-50 rounded-lg p-4">
-                    <h4 className="text-lg font-semibold mb-2 text-blue-600">Day {idx + 1}</h4>
-                    <div className="grid grid-cols-2 gap-2">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Breakfast</label>
-                        <input type="text" value={day.breakfast} onChange={(e) => handlePlanChange(idx, 'breakfast', e.target.value)} className="mt-1 block w-full border rounded px-2 py-1 focus:ring-2 focus:ring-blue-400" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Lunch</label>
-                        <input type="text" value={day.lunch} onChange={(e) => handlePlanChange(idx, 'lunch', e.target.value)} className="mt-1 block w-full border rounded px-2 py-1 focus:ring-2 focus:ring-blue-400" />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700">Dinner</label>
-                        <input type="text" value={day.dinner} onChange={(e) => handlePlanChange(idx, 'dinner', e.target.value)} className="mt-1 block w-full border rounded px-2 py-1 focus:ring-2 focus:ring-blue-400" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-end space-x-2 mt-6">
-                <button type="button" className="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300 transition" onClick={() => setEditingPlan(false)}>Cancel</button>
-                <button type="button" className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition shadow" onClick={handleSavePlan} disabled={planLoading}>{planLoading ? 'Saving...' : 'Save Plan'}</button>
-              </div>
-            </div>
-          ) : (
-            <div className="bg-white rounded-xl shadow p-6">
-              <h3 className="text-xl font-bold mb-4 text-blue-700">Current Weekly Meal Plan</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-7 gap-4">
-                {weeklyPlan.map((day, idx) => (
-                  <div key={idx} className="bg-blue-50 rounded-lg p-4">
-                    <h4 className="text-lg font-semibold mb-2 text-blue-600">Day {idx + 1}</h4>
-                    <p className="text-base text-gray-800">Breakfast: {day.breakfast || '-'}</p>
-                    <p className="text-base text-gray-800">Lunch: {day.lunch || '-'}</p>
-                    <p className="text-base text-gray-800">Dinner: {day.dinner || '-'}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div> */}
 
         {/* Edit Staff Modal */}
         {editStaff && (
@@ -847,8 +724,6 @@ const MessWorkerDashboard = () => {
             <form className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-xl w-full max-w-md transition-colors duration-300" onSubmit={handleAddSubmit}>
               <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Add Staff Member</h2>
               <input name="name" value={addForm.name} onChange={handleAddChange} placeholder="Name" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required />
-              <input name="email" value={addForm.email} onChange={handleAddChange} placeholder="Email" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" type="email" />
-              <input name="password" value={addForm.password} onChange={handleAddChange} placeholder="Password" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" type="password" required />
               <input name="phoneNumber" value={addForm.phoneNumber} onChange={handleAddChange} placeholder="Phone Number" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" />
               <select name="idProofType" value={addForm.idProofType} onChange={handleAddChange} className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required>
                 <option value="">Select ID Proof Type</option>
@@ -860,7 +735,6 @@ const MessWorkerDashboard = () => {
               <input name="position" value={addForm.position} onChange={handleAddChange} placeholder="Position" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" />
               <select name="role" value={addForm.role} onChange={handleAddChange} className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required>
                 <option value="mess_staff">Mess Staff</option>
-                <option value="staff_head">Head Staff</option>
               </select>
               <div className="flex gap-2 justify-end">
                 <button type="button" className="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-600 transition-colors" onClick={() => setShowAddModal(false)} disabled={addLoading}>Cancel</button>

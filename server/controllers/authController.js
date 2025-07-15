@@ -341,7 +341,7 @@ exports.markSalaryPaid = async (req, res) => {
       return res.status(400).json({ error: 'Invalid amount' });
     }
     const staff = await User.findById(id);
-    if (!staff || staff.role !== 'mess_staff') {
+    if (!staff || (staff.role !== 'mess_staff' && staff.role !== 'staff_head')) {
       return res.status(404).json({ error: 'Staff not found' });
     }
     staff.salaryPaid = (staff.salaryPaid || 0) + amount;
@@ -390,7 +390,7 @@ exports.updateStaffAttendance = async (req, res) => {
     const { date, present } = req.body;
     if (!date) return res.status(400).json({ error: 'Date is required' });
     const staff = await User.findById(id);
-    if (!staff || staff.role !== 'mess_staff') return res.status(404).json({ error: 'Staff not found' });
+    if (!staff || (staff.role !== 'mess_staff' && staff.role !== 'staff_head')) return res.status(404).json({ error: 'Staff not found' });
     const d = new Date(date);
     const dateStr = d.toISOString().slice(0, 10);
     const todayStr = new Date().toISOString().slice(0, 10);

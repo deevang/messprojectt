@@ -60,7 +60,7 @@ const StudentDashboard = () => {
   const totalMeals = meals.length;
   const totalDayBookings = dayBookings.filter(b => b.status === 'booked').length;
   const totalPayments = payments.filter(p => p.status === 'completed').length;
-  const pendingPayments = payments.filter(p => p.status === 'pending').length;
+  const pendingPayments = payments.filter(p => p.status === 'pending').reduce((sum, p) => sum + (p.amount || 0), 0);
 
   // Weekly Meal Plan structure
   const weekMeals = getNext7Days().map(dateStr => {
@@ -154,7 +154,7 @@ const StudentDashboard = () => {
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Payments</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{pendingPayments}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">₹{pendingPayments}</p>
               </div>
             </div>
           </div>
