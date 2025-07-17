@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { User, Shield, GraduationCap, Utensils } from 'lucide-react';
 import toast from 'react-hot-toast';
+import tiffinspaceLogo from '../assets/tiffinspace-logo.png';
 
 const RoleSelectionPage = () => {
   const [selectedRole, setSelectedRole] = useState('');
@@ -99,9 +100,7 @@ const RoleSelectionPage = () => {
         {/* Header */}
         <div className="text-center">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 rounded-2xl flex items-center justify-center">
-              <Utensils className="w-8 h-8 text-white" />
-            </div>
+            <img src={tiffinspaceLogo} alt="TiffinSpace Logo" className="w-16 h-16 object-contain rounded-2xl" />
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
             Choose Your Role

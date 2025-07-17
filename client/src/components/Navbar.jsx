@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import DarkModeToggle from '../components/DarkModeToggle';
 import NotificationBell from './NotificationBell';
+import tiffinspaceLogo from '../assets/tiffinspace-logo.png';
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);
@@ -40,10 +41,8 @@ const Navbar = () => {
           {/* Logo */}
           <div className="flex items-center">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <Utensils className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold text-gray-900 dark:text-white">MessManager</span>
+              <img src={tiffinspaceLogo} alt="TiffinSpace Logo" className="w-8 h-8 object-contain rounded-lg" />
+              <span className="text-xl font-bold text-gray-900 dark:text-white">TiffinSpace</span>
             </Link>
           </div>
 
@@ -99,9 +98,9 @@ const Navbar = () => {
                       <button
                         onClick={() => {
                           if (user.role === 'student') {
-                            window.location.href = '/student-feedback';
+                            navigate('/student-feedback');
                           } else {
-                            window.location.href = '/manage-feedback';
+                            navigate('/manage-feedback');
                           }
                         }}
                         className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center space-x-1"
@@ -247,9 +246,9 @@ const Navbar = () => {
                       onClick={() => {
                         setIsOpen(false);
                         if (user.role === 'student') {
-                          window.location.href = '/student-feedback';
+                          navigate('/student-feedback');
                         } else {
-                          window.location.href = '/manage-feedback';
+                          navigate('/manage-feedback');
                         }
                       }}
                       className="text-gray-600 dark:text-gray-200 hover:text-gray-900 dark:hover:text-white block px-3 py-2 rounded-md text-base font-medium transition-colors flex items-center space-x-2 w-full text-left"

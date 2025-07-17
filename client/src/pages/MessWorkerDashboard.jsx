@@ -199,11 +199,12 @@ const MessWorkerDashboard = () => {
     e.preventDefault();
     setAddLoading(true);
     try {
-      await authAPI.register({ ...addForm });
+      await authAPI.register({ ...addForm, salary: Number(addForm.salary) });
       toast.success('Staff member added');
       setShowAddModal(false);
       setAddForm({ name: '', email: '', password: '', phoneNumber: '', position: '', idProofType: '', idProofNumber: '', role: 'mess_staff' });
       fetchStaff();
+      fetchAttendance();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Failed to add staff');
     } finally {
@@ -350,7 +351,7 @@ const MessWorkerDashboard = () => {
               <User className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               All Staff Members
             </h2>
-            {user?.role === 'staff_head' && (
+            {(user?.role === 'admin') && (
               <button 
                 className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors flex items-center gap-2 shadow-sm" 
                 onClick={() => setShowAddModal(true)}
@@ -359,18 +360,8 @@ const MessWorkerDashboard = () => {
               </button>
             )}
           </div>
-          {/* Staff search input for all users except admin */}
-          {user?.role !== 'admin' && (
-            <div className="flex items-center gap-2 mb-4">
-              <input
-                type="text"
-                placeholder="Search by name, phone, or position"
-                value={staffSearch}
-                onChange={e => setStaffSearch(e.target.value)}
-                className="border rounded px-3 py-1"
-              />
-            </div>
-          )}
+          {/* Staff search input for all users */}
+          
           
           {staffLoading ? (
             <div className="text-center text-lg text-gray-500 dark:text-gray-400 py-12 animate-pulse">Loading staff...</div>
@@ -408,7 +399,7 @@ const MessWorkerDashboard = () => {
                   {isFutureMonth ? (
                   <div className="text-center text-lg text-gray-500 py-8">No records for future months.</div>
                 ) : (
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 rounded-2xl overflow-hidden shadow-lg">
+                  <table className="min-w-[1200px] divide-y divide-gray-200 dark:divide-gray-700 rounded-2xl overflow-hidden shadow-lg">
                       <thead className="bg-gray-50 dark:bg-gray-800">
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-bold text-gray-700 dark:text-white uppercase tracking-wider select-none whitespace-nowrap">
@@ -548,10 +539,11 @@ const MessWorkerDashboard = () => {
               <div className="text-center text-lg text-gray-500 dark:text-gray-400 py-8">No attendance data found.</div>
             ) : (
               <div className="overflow-x-auto rounded-xl shadow mt-4">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 rounded-2xl overflow-hidden shadow-lg text-xs">
+                <table className="min-w-[1200px] min-h-[100px] divide-y divide-gray-200 dark:divide-gray-700 rounded-2xl overflow-hidden shadow-lg text-xs">
                   <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
                       <th className="px-2 py-2 text-left font-bold text-gray-700 dark:text-white uppercase tracking-wider whitespace-nowrap">Name</th>
+                      <th className="px-2 py-2 text-center font-bold text-gray-700 dark:text-white uppercase tracking-wider whitespace-nowrap">Salary</th>
                       <th className="px-2 py-2 text-center font-bold text-gray-700 dark:text-white uppercase tracking-wider whitespace-nowrap">Present</th>
                       <th className="px-2 py-2 text-center font-bold text-gray-700 dark:text-white uppercase tracking-wider whitespace-nowrap">Absent</th>
                       <th className="px-2 py-2 text-center font-bold text-gray-700 dark:text-white uppercase tracking-wider whitespace-nowrap">Paid Leaves Used</th>
@@ -567,8 +559,15 @@ const MessWorkerDashboard = () => {
                       const year = Number(attendanceMonth.split('-')[0]);
                       const month = Number(attendanceMonth.split('-')[1]) - 1;
                       const daysInMonth = getDaysInMonth(year, month);
-                      const presentDays = (staff.attendance || []).length;
-                      const absentDays = daysInMonth - presentDays;
+                      const today = new Date();
+                      const lastDay = (today.getFullYear() === year && today.getMonth() === month)
+                        ? today.getDate()
+                        : daysInMonth;
+                      const presentDays = (staff.attendance || []).filter(date => {
+                        const d = new Date(date);
+                        return d.getFullYear() === year && d.getMonth() === month && d.getDate() <= lastDay;
+                      }).length;
+                      const absentDays = lastDay - presentDays;
                       const paidLeaves = Math.min(absentDays, 3);
                       const unpaidAbsences = Math.max(absentDays - 3, 0);
                       const dailySalary = staff.salary ? staff.salary / daysInMonth : 0;
@@ -577,6 +576,7 @@ const MessWorkerDashboard = () => {
                       return (
                         <tr key={staff._id} className="align-middle hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                           <td className="px-2 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">{staff.name}</td>
+                          <td className="px-2 py-2 text-center text-blue-700 dark:text-blue-400 font-bold">₹{staff.salary?.toLocaleString() || '0'}</td>
                           <td className="px-2 py-2 text-center text-green-700 dark:text-green-400 font-bold">{presentDays}</td>
                           <td className="px-2 py-2 text-center text-red-700 dark:text-red-400 font-bold">{absentDays}</td>
                           <td className="px-2 py-2 text-center text-yellow-700 dark:text-yellow-400 font-bold">{paidLeaves}</td>
@@ -585,9 +585,23 @@ const MessWorkerDashboard = () => {
                           {Array.from({ length: daysInMonth }, (_, i) => {
                             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
                             const isPresent = attendanceSet.has(dateStr);
+                            const isToday = new Date().toISOString().slice(0, 10) === dateStr;
+                            const isFuture = new Date(dateStr) > new Date();
+                            const canEdit = isToday && (user.role === 'staff_head');
                             return (
                               <td key={i} className="px-1 py-2 text-center">
-                                <span className={`inline-block w-4 h-4 rounded-full border ${isPresent ? 'bg-green-400 border-green-500' : 'bg-red-200 border-red-300'}`}></span>
+                                {isFuture ? (
+                                  <span className="inline-block w-4 h-4 rounded-full border bg-gray-200 border-gray-300"></span>
+                                ) : canEdit ? (
+                                  <input
+                                    type="checkbox"
+                                    checked={isPresent}
+                                    onChange={(e) => handleAttendanceToggle(staff._id, dateStr, e.target.checked)}
+                                    className="w-4 h-4 text-blue-600 bg-gray-100 border-gray-300 rounded focus:ring-blue-500 dark:focus:ring-blue-600 dark:ring-offset-gray-800 focus:ring-2 dark:bg-gray-700 dark:border-gray-600"
+                                  />
+                                ) : (
+                                  <span className={`inline-block w-4 h-4 rounded-full border ${isPresent ? 'bg-green-400 border-green-500' : 'bg-red-200 border-red-300'}`}></span>
+                                )}
                               </td>
                             );
                           })}
@@ -604,10 +618,11 @@ const MessWorkerDashboard = () => {
               <div className="text-center text-lg text-gray-500 dark:text-gray-400 py-8">No attendance data found.</div>
             ) : (
               <div className="overflow-x-auto rounded-xl shadow mt-4">
-                <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700 rounded-2xl overflow-hidden shadow-lg text-xs">
+                <table className="min-w-[1200px] min-h-[100px] divide-y divide-gray-200 dark:divide-gray-700 rounded-2xl overflow-hidden shadow-lg text-xs">
                   <thead className="bg-gray-50 dark:bg-gray-800">
                     <tr>
                       <th className="px-2 py-2 text-left font-bold text-gray-700 dark:text-white uppercase tracking-wider whitespace-nowrap">Name</th>
+                      <th className="px-2 py-2 text-center font-bold text-gray-700 dark:text-white uppercase tracking-wider whitespace-nowrap">Salary</th>
                       <th className="px-2 py-2 text-center font-bold text-gray-700 dark:text-white uppercase tracking-wider whitespace-nowrap">Present</th>
                       <th className="px-2 py-2 text-center font-bold text-gray-700 dark:text-white uppercase tracking-wider whitespace-nowrap">Absent</th>
                       <th className="px-2 py-2 text-center font-bold text-gray-700 dark:text-white uppercase tracking-wider whitespace-nowrap">Paid Leaves Used</th>
@@ -623,8 +638,15 @@ const MessWorkerDashboard = () => {
                       const year = Number(attendanceMonth.split('-')[0]);
                       const month = Number(attendanceMonth.split('-')[1]) - 1;
                       const daysInMonth = getDaysInMonth(year, month);
-                      const presentDays = (staff.attendance || []).length;
-                      const absentDays = daysInMonth - presentDays;
+                      const today = new Date();
+                      const lastDay = (today.getFullYear() === year && today.getMonth() === month)
+                        ? today.getDate()
+                        : daysInMonth;
+                      const presentDays = (staff.attendance || []).filter(date => {
+                        const d = new Date(date);
+                        return d.getFullYear() === year && d.getMonth() === month && d.getDate() <= lastDay;
+                      }).length;
+                      const absentDays = lastDay - presentDays;
                       const paidLeaves = Math.min(absentDays, 3);
                       const unpaidAbsences = Math.max(absentDays - 3, 0);
                       const dailySalary = staff.salary ? staff.salary / daysInMonth : 0;
@@ -633,6 +655,7 @@ const MessWorkerDashboard = () => {
                       return (
                         <tr key={staff._id} className="align-middle hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                           <td className="px-2 py-2 font-semibold text-gray-900 dark:text-white whitespace-nowrap">{staff.name}</td>
+                          <td className="px-2 py-2 text-center text-blue-700 dark:text-blue-400 font-bold">₹{staff.salary?.toLocaleString() || '0'}</td>
                           <td className="px-2 py-2 text-center text-green-700 dark:text-green-400 font-bold">{presentDays}</td>
                           <td className="px-2 py-2 text-center text-red-700 dark:text-red-400 font-bold">{absentDays}</td>
                           <td className="px-2 py-2 text-center text-yellow-700 dark:text-yellow-400 font-bold">{paidLeaves}</td>
@@ -642,10 +665,13 @@ const MessWorkerDashboard = () => {
                             const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`;
                             const isPresent = attendanceSet.has(dateStr);
                             const isToday = new Date().toISOString().slice(0, 10) === dateStr;
+                            const isFuture = new Date(dateStr) > new Date();
                             const canEdit = isToday && (user.role === 'staff_head');
                             return (
                               <td key={i} className="px-1 py-2 text-center">
-                                {canEdit ? (
+                                {isFuture ? (
+                                  <span className="inline-block w-4 h-4 rounded-full border bg-gray-200 border-gray-300"></span>
+                                ) : canEdit ? (
                                   <input
                                     type="checkbox"
                                     checked={isPresent}
@@ -724,6 +750,7 @@ const MessWorkerDashboard = () => {
             <form className="bg-white dark:bg-gray-900 p-6 rounded-xl shadow-xl w-full max-w-md transition-colors duration-300" onSubmit={handleAddSubmit}>
               <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Add Staff Member</h2>
               <input name="name" value={addForm.name} onChange={handleAddChange} placeholder="Name" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required />
+              <input name="email" type="email" value={addForm.email} onChange={handleAddChange} placeholder="Email" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required />
               <input name="phoneNumber" value={addForm.phoneNumber} onChange={handleAddChange} placeholder="Phone Number" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" />
               <select name="idProofType" value={addForm.idProofType} onChange={handleAddChange} className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required>
                 <option value="">Select ID Proof Type</option>
@@ -733,6 +760,7 @@ const MessWorkerDashboard = () => {
               </select>
               <input name="idProofNumber" value={addForm.idProofNumber} onChange={handleAddChange} placeholder="ID Proof Number" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required />
               <input name="position" value={addForm.position} onChange={handleAddChange} placeholder="Position" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" />
+              <input name="salary" type="number" value={addForm.salary || ''} onChange={handleAddChange} placeholder="Salary" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required />
               <select name="role" value={addForm.role} onChange={handleAddChange} className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required>
                 <option value="mess_staff">Mess Staff</option>
               </select>

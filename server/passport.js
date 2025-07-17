@@ -27,6 +27,8 @@ passport.use(new GoogleStrategy({
       console.log('Found existing user by email, linking Google account:', user.email);
       // Link Google account to existing user
       user.googleId = profile.id;
+      // Set emailVerified to true if not already
+      if (!user.emailVerified) user.emailVerified = true;
       await user.save();
       return done(null, user);
     }
@@ -37,7 +39,8 @@ passport.use(new GoogleStrategy({
       googleId: profile.id,
       name: profile.displayName,
       email: profile.emails[0].value,
-      role: 'pending' // Will be updated when user selects role
+      role: 'pending', // Will be updated when user selects role
+      emailVerified: true // Mark as verified for Google users
     });
     
     console.log('New user created successfully:', user.email);

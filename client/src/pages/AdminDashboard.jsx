@@ -504,7 +504,8 @@ const AdminDashboard = () => {
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <div
-            className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-lg transition-all"
+            className="bg-white dark:bg-gray-900 rounded-lg shadow border-2 border-transparent hover:border-blue-600 focus:border-blue-600 focus:ring-2 focus:ring-blue-400 p-6 cursor-pointer hover:shadow-xl transition-all duration-150 transform hover:scale-105 outline-none"
+            tabIndex={0}
             onClick={() => setShowExpenseModal(true)}
             title="Click to view expense details"
           >
@@ -514,7 +515,8 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div
-            className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-lg transition-all"
+            className="bg-white dark:bg-gray-900 rounded-lg shadow border-2 border-transparent hover:border-blue-600 focus:border-blue-600 focus:ring-2 focus:ring-blue-400 p-6 cursor-pointer hover:shadow-xl transition-all duration-150 transform hover:scale-105 outline-none"
+            tabIndex={0}
             onClick={() => navigate('/mess-staff')}
             title="Go to Staff Dashboard"
           >
@@ -524,7 +526,8 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div
-            className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-lg transition-all"
+            className="bg-white dark:bg-gray-900 rounded-lg shadow border-2 border-transparent hover:border-blue-600 focus:border-blue-600 focus:ring-2 focus:ring-blue-400 p-6 cursor-pointer hover:shadow-xl transition-all duration-150 transform hover:scale-105 outline-none"
+            tabIndex={0}
             onClick={() => navigate('/mess-staff')}
             title="Go to Staff Dashboard"
           >
@@ -534,7 +537,8 @@ const AdminDashboard = () => {
             </div>
           </div>
           <div
-            className="bg-white dark:bg-gray-900 rounded-lg shadow-sm p-6 cursor-pointer hover:shadow-lg transition-all"
+            className="bg-white dark:bg-gray-900 rounded-lg shadow border-2 border-transparent hover:border-blue-600 focus:border-blue-600 focus:ring-2 focus:ring-blue-400 p-6 cursor-pointer hover:shadow-xl transition-all duration-150 transform hover:scale-105 outline-none"
+            tabIndex={0}
             onClick={() => navigate('/admin/payments')}
             title="Go to Payments Page"
           >

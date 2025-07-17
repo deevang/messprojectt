@@ -14,6 +14,7 @@ import {
   ArrowRight,
   Play
 } from 'lucide-react';
+import tiffinspaceLogo from '../assets/tiffinspace-logo.png';
 
 const HomePage = () => {
   const { user } = useAuth();
@@ -92,35 +93,40 @@ const HomePage = () => {
       {/* Navigation */}
 
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24">
-          <div className="text-center">
-            <h1 className="text-4xl md:text-6xl font-bold text-gray-900 dark:text-white mb-6">
-              Modern Mess
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-400 dark:to-purple-400">
-                {" "}Management
-              </span>
-            </h1>
-            <p className="text-xl text-gray-600 dark:text-gray-300 mb-8 max-w-3xl mx-auto">
-              Streamline your mess operations with our comprehensive management system. 
-              From meal booking to payment tracking, we've got everything covered.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      {/* Custom Hero Section */}
+      <section className="pt-16 pb-8 bg-white dark:bg-gray-950 transition-colors duration-300">
+        <div className="max-w-3xl mx-auto flex flex-col items-center text-center">
+          <img 
+            src={tiffinspaceLogo} 
+            alt="Bowl Logo" 
+            className="w-16 h-16 mb-4 animate-float"
+            style={{ filter: 'drop-shadow(0 4px 12px rgba(0,0,0,0.10))' }}
+          />
+          <h1 className="text-4xl md:text-6xl font-serif font-semibold text-gray-900 dark:text-white mb-4 leading-tight">
+            Your daily dose of<br />home-cooked happiness
+          </h1>
+          <p className="text-lg md:text-xl text-gray-700 dark:text-gray-300 mb-2">
+            Serving up smiles to students and professionals with our daily thali.
+            <br />
+            <br />
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link
-                  to={user ? (user.role === 'admin' ? '/admin' : '/student') : '/login'}
+                  to={user ? (user.role === 'admin' ? '/admin' : user.role === 'staff_head' ? '/head-staff' : user.role === 'mess_staff' ? '/mess-staff' : user.role === 'student') : '/login'}
                   className="inline-flex items-center bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 dark:bg-blue-700 dark:hover:bg-blue-800 transition-colors"
                 >
                   Access Dashboard
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </Link>
             </div>
-          </div>
         </div>
       </section>
 
+      {/* Hero Section */}
+    
+
       {/* Stats Section */}
-      <section className="py-16 bg-white dark:bg-gray-900 transition-colors duration-300">
+      {/* <section className="py-16 bg-white dark:bg-gray-900 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
@@ -134,7 +140,40 @@ const HomePage = () => {
             ))}
           </div>
         </div>
-      </section> 
+      </section>  */}
+
+      {/* Benefits & USP's Section */}
+      <section className="py-12 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <h2 className="text-3xl md:text-4xl font-serif font-semibold text-gray-900 dark:text-white mb-8 text-center">Our Benefits & USP's</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 justify-center">
+            {/* Card 1 */}
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-green-100 dark:bg-green-200/80 p-6 flex flex-col items-center text-center shadow-md transition-transform duration-200 hover:scale-105">
+              <span className="uppercase text-[10px] tracking-widest text-gray-700 mb-3 mt-1">Homemade Meals</span>
+              <p className="text-base text-black mb-6">Enjoy the comfort of homestyle cooking, no matter where you are, anytime.</p>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 text-black mt-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 12c0-4.97 4.03-9 9-9s9 4.03 9 9-4.03 9-9 9-9-4.03-9-9zm9 3.5a3.5 3.5 0 100-7 3.5 3.5 0 000 7zm0 0v2.5m0-2.5v-2.5" /></svg>
+            </div>
+            {/* Card 2 */}
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-purple-100 dark:bg-purple-200/80 p-6 flex flex-col items-center text-center shadow-md transition-transform duration-200 hover:scale-105">
+              <span className="uppercase text-[10px] tracking-widest text-gray-700 mb-3 mt-1">Nutritionally Balanced</span>
+              <p className="text-base text-black mb-6">Our meals aren't just delicious; they're crafted to meet your nutritional needs.</p>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 text-black mt-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M9 17v-2a2 2 0 012-2h2a2 2 0 012 2v2m-6 0h6m-6 0a2 2 0 01-2-2v-2a2 2 0 012-2h6a2 2 0 012 2v2a2 2 0 01-2 2m-6 0v2a2 2 0 002 2h2a2 2 0 002-2v-2" /></svg>
+            </div>
+            {/* Card 3 */}
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-pink-100 dark:bg-pink-200/80 p-6 flex flex-col items-center text-center shadow-md transition-transform duration-200 hover:scale-105">
+              <span className="uppercase text-[10px] tracking-widest text-gray-700 mb-3 mt-1">On Time Deliveries</span>
+              <p className="text-base text-black mb-6">With our on-time delivery service, you can count on having your meal exactly when you need it.</p>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 text-black mt-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8m-9 13V5a2 2 0 012-2h2a2 2 0 012 2v16" /></svg>
+            </div>
+            {/* Card 4 */}
+            <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-orange-100 dark:bg-orange-200/80 p-6 flex flex-col items-center text-center shadow-md transition-transform duration-200 hover:scale-105">
+              <span className="uppercase text-[10px] tracking-widest text-gray-700 mb-3 mt-1">Flexible Meal for Everyone</span>
+              <p className="text-base text-black mb-6">Meals for all: diverse plans for every diet and lifestyle, from students to professionals</p>
+              <svg xmlns="http://www.w3.org/2000/svg" className="w-16 h-16 text-black mt-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1.5"><path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Features Section */}
       <section className="py-24 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -163,7 +202,7 @@ const HomePage = () => {
       </section>
 
       {/* Weekly Meal Plan Section */}
-      <section className="py-24 bg-white dark:bg-gray-900 transition-colors duration-300">
+      {/* <section className="py-24 bg-white dark:bg-gray-900 transition-colors duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 dark:text-white mb-4">
@@ -225,12 +264,12 @@ const HomePage = () => {
             </div>
           ) : (
             <div className="text-center py-12">
-              <Utensils className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+              <img src={tiffinspaceLogo} alt="TiffinSpace Logo" className="w-16 h-16 mx-auto mb-4 object-contain" />
               <p className="text-gray-600 dark:text-gray-300">No meal plan available at the moment.</p>
             </div>
           )}
         </div>
-      </section>
+      </section> */}
 
       {/* Benefits Section */}
       <section className="py-24 bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
@@ -262,7 +301,7 @@ const HomePage = () => {
                 </p>
                 {user ? (
                   <Link
-                    to={user.role === 'admin' ? '/admin' : '/student'}
+                    to={user.role === 'admin' ? '/admin' : user.role === 'staff_head' ? '/head-staff' : user.role === 'mess_staff' ? '/mess-staff' : '/student'}
                     className="inline-flex items-center bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-300 px-6 py-3 rounded-lg font-semibold hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
                   >
                     Go to Dashboard
@@ -289,10 +328,8 @@ const HomePage = () => {
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
             <div>
               <div className="flex items-center space-x-2 mb-4">
-                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 dark:from-blue-900 dark:to-purple-900 rounded-lg flex items-center justify-center">
-                  <Utensils className="w-5 h-5 text-white" />
-                </div>
-                <span className="text-xl font-bold">MessManager</span>
+                <img src={tiffinspaceLogo} alt="TiffinSpace Logo" className="w-8 h-8 object-contain rounded-lg" />
+                <span className="text-xl font-bold">TiffinSpace</span>
               </div>
               <p className="text-gray-400 dark:text-gray-300">
                 Modern mess management system for educational institutions.
@@ -327,7 +364,7 @@ const HomePage = () => {
             </div>
           </div>
           <div className="border-t border-gray-800 dark:border-gray-700 mt-8 pt-8 text-center text-gray-400 dark:text-gray-500">
-            <p>&copy; 2024 MessManager. All rights reserved.</p>
+            <p>&copy; 2024 TiffinSpace. All rights reserved.</p>
           </div>
         </div>
       </footer>

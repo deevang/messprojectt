@@ -47,7 +47,7 @@ async function sendResetEmail(user, req) {
 exports.register = async (req, res) => {
   console.log('Register request body:', req.body);
   try {
-    const { name, email, password, role, roomNumber, phoneNumber, messPlan, dietaryRestrictions, position, idProofType, idProofNumber } = req.body;
+    const { name, email, password, role, roomNumber, phoneNumber, messPlan, dietaryRestrictions, position, idProofType, idProofNumber, salary } = req.body;
     
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -69,6 +69,7 @@ exports.register = async (req, res) => {
       position,
       idProofType,
       idProofNumber,
+      salary, // <-- add this line
       emailVerified: false,
       emailVerificationToken
     });

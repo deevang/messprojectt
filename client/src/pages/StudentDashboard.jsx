@@ -144,20 +144,6 @@ const StudentDashboard = () => {
               </div>
             </div>
           </div>
-
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg border border-gray-200 dark:border-gray-700 p-6 transition-colors duration-300">
-            <div className="flex items-center">
-              <div className="p-2 bg-red-100 dark:bg-red-900 rounded-lg">
-                <svg className="w-6 h-6 text-red-600 dark:text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600 dark:text-gray-400">Pending Payments</p>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">₹{pendingPayments}</p>
-              </div>
-            </div>
-          </div>
         </div>
 
         {/* Weekly Meal Plan */}

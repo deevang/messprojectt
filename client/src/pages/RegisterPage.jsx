@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Eye, EyeOff, Mail, Lock, User, Phone, Home, Utensils } from 'lucide-react';
 import { Dialog } from '@headlessui/react';
+import tiffinspaceLogo from '../assets/tiffinspace-logo.png';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState({
@@ -12,9 +13,7 @@ const RegisterPage = () => {
     confirmPassword: '',
     role: 'student',
     roomNumber: '',
-    phoneNumber: '',
-    messPlan: 'daily',
-    dietaryRestrictions: []
+    phoneNumber: ''
   });
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -165,15 +164,13 @@ const RegisterPage = () => {
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex justify-center">
-            <div className="w-16 h-16 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl flex items-center justify-center">
-              <Utensils className="w-8 h-8 text-white" />
-            </div>
+            <img src={tiffinspaceLogo} alt="TiffinSpace Logo" className="w-16 h-16 object-contain rounded-2xl" />
           </div>
           <h2 className="mt-6 text-3xl font-bold text-gray-900 dark:text-white">
             Create your account
           </h2>
           <p className="mt-2 text-sm text-gray-600 dark:text-gray-300">
-            Join MessManager to start managing your meals efficiently
+            Join TiffinSpace to start managing your meals efficiently
           </p>
         </div>
 
@@ -308,50 +305,6 @@ const RegisterPage = () => {
                 <p className="mt-1 text-sm text-red-600 dark:text-red-400">{errors.phoneNumber}</p>
               )}
             </div>
-
-            {/* Mess Plan (for students) */}
-            {formData.role === 'student' && (
-              <div>
-                <label htmlFor="messPlan" className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  Mess Plan
-                </label>
-                <select
-                  id="messPlan"
-                  name="messPlan"
-                  value={formData.messPlan}
-                  onChange={handleChange}
-                  className="block w-full px-3 py-3 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 sm:text-sm bg-background dark:bg-gray-800 text-gray-900 dark:text-white"
-                >
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </div>
-            )}
-
-            {/* Dietary Restrictions */}
-            {formData.role === 'student' && (
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-2">
-                  Dietary Restrictions (Optional)
-                </label>
-                <div className="grid grid-cols-2 gap-3">
-                  {dietaryOptions.map((option) => (
-                    <label key={option} className="flex items-center space-x-2">
-                      <input
-                        type="checkbox"
-                        name="dietaryRestrictions"
-                        value={option}
-                        checked={formData.dietaryRestrictions.includes(option)}
-                        onChange={handleChange}
-                        className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800"
-                      />
-                      <span className="text-sm text-gray-700 dark:text-gray-200">{option}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-            )}
 
             {/* Password Field */}
             <div>

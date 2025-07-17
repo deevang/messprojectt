@@ -192,3 +192,16 @@
 .gradient-danger {
   background: linear-gradient(135deg, #ff9a9e 0%, #fecfef 100%);
 }
+
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-16px);
+  }
+}
+
+.animate-float {
+  animation: float 3s ease-in-out infinite;
+}
