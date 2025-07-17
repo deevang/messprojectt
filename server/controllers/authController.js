@@ -47,14 +47,19 @@ async function sendResetEmail(user, req) {
 exports.register = async (req, res) => {
   console.log('Register request body:', req.body);
   try {
-    const { name, email, password, role, roomNumber, phoneNumber, messPlan, dietaryRestrictions, position, idProofType, idProofNumber, salary } = req.body;
+    let { name, email, password, role, roomNumber, phoneNumber, messPlan, dietaryRestrictions, position, idProofType, idProofNumber, salary } = req.body;
     
     // Check if user already exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ error: 'User with this email already exists' });
     }
-
+    // If registering as head_staff, set to pending_staff_head and create notification
+    let pendingRole = undefined;
+    if (role === 'staff_head') {
+      pendingRole = 'staff_head';
+      role = 'pending_staff_head';
+    }
     const hashedPassword = await bcrypt.hash(password, 10);
     const emailVerificationToken = crypto.randomBytes(32).toString('hex');
     const newUser = await User.create({ 
@@ -62,6 +67,7 @@ exports.register = async (req, res) => {
       email, 
       password: hashedPassword, 
       role,
+      pendingRole,
       roomNumber,
       phoneNumber,
       messPlan,
@@ -73,11 +79,22 @@ exports.register = async (req, res) => {
       emailVerified: false,
       emailVerificationToken
     });
+    // If head_staff, create notification for admin approval
+    let customMessage = 'User registered successfully. Please check your email to verify your account.';
+    if (role === 'pending_staff_head') {
+      await Notification.create({
+        type: 'head_staff_request',
+        message: `${name} (${email}) has requested Head Staff access.`,
+        sender: newUser._id,
+        isRead: false,
+        status: 'pending'
+      });
+      customMessage = 'Registration successful! Please verify your email. Your Head Staff access will require admin approval before you can log in.';
+    }
     console.log('Sending verification email with token:', newUser.emailVerificationToken);
     await sendVerificationEmail(newUser, req);
-
     res.status(201).json({ 
-      message: 'User registered successfully. Please check your email to verify your account.'
+      message: customMessage
     });
   } catch (err) {
     res.status(400).json({ error: err.message });

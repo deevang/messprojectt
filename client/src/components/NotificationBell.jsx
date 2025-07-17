@@ -35,6 +35,13 @@ const NotificationBell = ({ user }) => {
     }
   }, [canViewNotifications, isAdmin]);
 
+  // In useEffect, only set activeTab to 'admin' if user is admin
+  useEffect(() => {
+    if (!isAdmin && activeTab === 'admin') {
+      setActiveTab('feedback');
+    }
+  }, [isAdmin]);
+
   const fetchUnreadCount = async () => {
     try {
       let endpoint;
@@ -92,6 +99,7 @@ const NotificationBell = ({ user }) => {
 
   const fetchAdminNotifications = async () => {
     try {
+      if (!isAdmin) return;
       console.log('Fetching admin notifications...');
       const response = await fetch('/api/notifications/admin', {
         headers: {
@@ -108,9 +116,11 @@ const NotificationBell = ({ user }) => {
       } else {
         const error = await response.json();
         console.error('Failed to fetch admin notifications:', error);
+        setAdminNotifications([]);
       }
     } catch (error) {
       console.error('Failed to fetch admin notifications:', error);
+      setAdminNotifications([]);
     }
   };
 
@@ -334,6 +344,9 @@ const NotificationBell = ({ user }) => {
 
   const renderAdminNotifications = () => (
     <div className="divide-y divide-gray-200 dark:divide-gray-700">
+      {activeTab === 'admin' && !isAdmin && (
+        <div className="p-4 text-red-600">Access denied. Admin only.</div>
+      )}
       {adminNotifications.map((notification) => (
         <div key={notification._id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
           <div className="flex items-start justify-between">

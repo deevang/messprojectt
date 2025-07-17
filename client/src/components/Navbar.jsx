@@ -40,7 +40,7 @@ const Navbar = () => {
         <div className="flex justify-between items-center h-16">
           {/* Logo */}
           <div className="flex items-center">
-            <Link to="/" className="flex items-center space-x-2">
+            <Link to="/" className="flex items-center space-x-2" onClick={() => { window.scrollTo({ top: 0, behavior: 'smooth' }); }}>
               <img src={tiffinspaceLogo} alt="TiffinSpace Logo" className="w-8 h-8 object-contain rounded-lg" />
               <span className="text-xl font-bold text-gray-900 dark:text-white">TiffinSpace</span>
             </Link>

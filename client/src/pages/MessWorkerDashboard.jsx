@@ -23,7 +23,7 @@ const MessWorkerDashboard = () => {
   const [attendance, setAttendance] = useState([]);
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState({ name: '', email: '', password: '', phoneNumber: '', position: '', idProofType: '', idProofNumber: '', role: 'mess_staff' });
+  const [addForm, setAddForm] = useState({ name: '', email: '', password: '', confirmPassword: '', phoneNumber: '', position: '', idProofType: '', idProofNumber: '', role: 'mess_staff' });
   const [addLoading, setAddLoading] = useState(false);
   const [recentPayments, setRecentPayments] = useState([]);
   const [recentBookings, setRecentBookings] = useState([]);
@@ -193,16 +193,43 @@ const MessWorkerDashboard = () => {
   };
 
   const handleAddChange = (e) => {
-    setAddForm({ ...addForm, [e.target.name]: e.target.value });
+    setAddForm({ ...addForm, [e.target.name]: e.target.value, error: undefined });
   };
   const handleAddSubmit = async (e) => {
     e.preventDefault();
+    if (!addForm.password || addForm.password.length < 6) {
+      setAddForm(f => ({ ...f, error: 'Password must be at least 6 characters.' }));
+      return;
+    }
+    if (addForm.password !== addForm.confirmPassword) {
+      setAddForm(f => ({ ...f, error: 'Passwords do not match.' }));
+      return;
+    }
     setAddLoading(true);
     try {
-      await authAPI.register({ ...addForm, salary: Number(addForm.salary) });
+      const res = await authAPI.register({ ...addForm, salary: Number(addForm.salary) });
       toast.success('Staff member added');
       setShowAddModal(false);
-      setAddForm({ name: '', email: '', password: '', phoneNumber: '', position: '', idProofType: '', idProofNumber: '', role: 'mess_staff' });
+      setAddForm({ name: '', email: '', password: '', confirmPassword: '', phoneNumber: '', position: '', idProofType: '', idProofNumber: '', role: 'mess_staff' });
+      // Optimistically add the new staff member to the list
+      setStaff(prev => [
+        ...prev,
+        {
+          ...addForm,
+          _id: res?.data?.user?._id || Date.now(),
+          salary: Number(addForm.salary),
+          role: 'mess_staff',
+          name: addForm.name,
+          email: addForm.email,
+          phoneNumber: addForm.phoneNumber,
+          position: addForm.position,
+          idProofType: addForm.idProofType,
+          idProofNumber: addForm.idProofNumber,
+          salaryPaid: 0,
+          outstandingSalary: 0,
+          attendance: [],
+        }
+      ]);
       fetchStaff();
       fetchAttendance();
     } catch (err) {
@@ -751,6 +778,8 @@ const MessWorkerDashboard = () => {
               <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white">Add Staff Member</h2>
               <input name="name" value={addForm.name} onChange={handleAddChange} placeholder="Name" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required />
               <input name="email" type="email" value={addForm.email} onChange={handleAddChange} placeholder="Email" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required />
+              <input name="password" type="password" value={addForm.password || ''} onChange={handleAddChange} placeholder="Password (min 6 chars)" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required minLength={6} />
+              <input name="confirmPassword" type="password" value={addForm.confirmPassword || ''} onChange={handleAddChange} placeholder="Confirm Password" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required minLength={6} />
               <input name="phoneNumber" value={addForm.phoneNumber} onChange={handleAddChange} placeholder="Phone Number" className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" />
               <select name="idProofType" value={addForm.idProofType} onChange={handleAddChange} className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required>
                 <option value="">Select ID Proof Type</option>
@@ -764,6 +793,7 @@ const MessWorkerDashboard = () => {
               <select name="role" value={addForm.role} onChange={handleAddChange} className="w-full mb-2 p-2 border border-gray-300 dark:border-gray-600 rounded bg-background dark:bg-gray-800 text-gray-900 dark:text-white" required>
                 <option value="mess_staff">Mess Staff</option>
               </select>
+              {addForm.error && <div className="text-red-600 text-sm mb-2">{addForm.error}</div>}
               <div className="flex gap-2 justify-end">
                 <button type="button" className="px-4 py-2 bg-gray-300 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded hover:bg-gray-400 dark:hover:bg-gray-600 transition-colors" onClick={() => setShowAddModal(false)} disabled={addLoading}>Cancel</button>
                 <button type="submit" className="px-4 py-2 bg-blue-600 dark:bg-blue-700 text-white rounded hover:bg-blue-700 dark:hover:bg-blue-800 transition-colors" disabled={addLoading}>{addLoading ? 'Adding...' : 'Add'}</button>

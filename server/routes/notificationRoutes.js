@@ -7,8 +7,10 @@ const User = require('../models/User');
 // Get admin notifications (for head staff approval requests)
 router.get('/admin', verifyToken, async (req, res) => {
   try {
+    console.log('DEBUG /api/notifications/admin req.user:', req.user);
     // Only admins can access this endpoint
     if (req.user.role !== 'admin') {
+      console.log('DEBUG /api/notifications/admin access denied, req.user:', req.user);
       return res.status(403).json({ message: 'Access denied. Admin only.' });
     }
 

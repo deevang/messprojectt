@@ -9,6 +9,7 @@ exports.verifyToken = (req, res, next) => {
     }
     
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    console.log('verifyToken decoded:', decoded);
     req.user = decoded;
     next();
   } catch (err) {
@@ -23,11 +24,13 @@ exports.verifyToken = (req, res, next) => {
 };
 
 exports.isAdmin = (req, res, next) => {
+  console.log('isAdmin called, req.user:', req.user);
   if (!req.user) {
     return res.status(401).json({ error: 'Authentication required' });
   }
   
   if (req.user.role !== 'admin') {
+    console.log('isAdmin access denied, req.user:', req.user);
     return res.status(403).json({ error: 'Admin access required' });
   }
   
