@@ -1,0 +1,13 @@
+{
+  "name": "messprojectt",
+  "version": "1.0.0",
+  "description": "Mess Management System",
+  "scripts": {
+    "build": "cd client && npm run build",
+    "install-deps": "npm install && cd client && npm install",
+    "start": "cd server && npm start"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+} 
