@@ -11,10 +11,15 @@ import ManageMealsPage from './pages/ManageMealsPage';
 import ManageStudentsPage from './pages/ManageStudentsPage';
 import ManagePaymentsPage from './pages/ManagePaymentsPage';
 import ManageFeedbackPage from './pages/ManageFeedbackPage';
+import StudentFeedbackPage from './pages/StudentFeedbackPage';
 import MessWorkerDashboard from './pages/MessWorkerDashboard';
 import MealsPage from './pages/MealsPage';
 import StudentsPage from './pages/StudentsPage';
 import ProfilePage from './pages/ProfilePage';
+import HeadStaffDashboard from './pages/HeadStaffDashboard';
+import RoleSelectionPage from './pages/RoleSelectionPage';
+import SetPasswordPage from './pages/SetPasswordPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles = [] }) => {
@@ -79,8 +84,18 @@ const AppRoutes = () => {
             <ManageFeedbackPage />
           </ProtectedRoute>
         } />
+        <Route path="/manage-feedback" element={
+          <ProtectedRoute allowedRoles={['admin', 'staff_head']}>
+            <ManageFeedbackPage />
+          </ProtectedRoute>
+        } />
+        <Route path="/student-feedback" element={
+          <ProtectedRoute allowedRoles={['student']}>
+            <StudentFeedbackPage />
+          </ProtectedRoute>
+        } />
         <Route path="/mess-staff" element={
-          <ProtectedRoute allowedRoles={['admin', 'mess_staff']}>
+          <ProtectedRoute allowedRoles={['admin', 'staff_head']}>
             <MessWorkerDashboard />
           </ProtectedRoute>
         } />
@@ -104,6 +119,14 @@ const AppRoutes = () => {
             <ProfilePage />
           </ProtectedRoute>
         } />
+        <Route path="/head-staff" element={
+          <ProtectedRoute allowedRoles={['staff_head']}>
+            <HeadStaffDashboard />
+          </ProtectedRoute>
+        } />
+        <Route path="/role-selection" element={<RoleSelectionPage />} />
+        <Route path="/set-password" element={<SetPasswordPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

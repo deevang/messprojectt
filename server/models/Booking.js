@@ -5,7 +5,7 @@ const bookingSchema = new mongoose.Schema({
   mealId: { type: mongoose.Schema.Types.ObjectId, ref: 'Meal', required: true },
   date: { type: Date, required: true },
   mealType: { type: String, enum: ['breakfast', 'lunch', 'dinner'], required: true },
-  status: { type: String, enum: ['booked', 'cancelled', 'consumed'], default: 'booked' },
+  status: { type: String, enum: ['booked', 'cancelled', 'consumed', 'pending'], default: 'booked' },
   bookingTime: { type: Date, default: Date.now },
   consumedAt: { type: Date },
   specialRequests: { type: String },

@@ -23,10 +23,23 @@ exports.getAllStudents = async (req, res) => {
       .limit(limit * 1)
       .skip((page - 1) * limit);
     
+    // For each student, fetch latest payment and booking
+    const studentsWithDetails = await Promise.all(students.map(async (student) => {
+      const payments = await Payment.find({ userId: student._id }).sort({ createdAt: -1 }).limit(1);
+      const bookings = await Booking.find({ userId: student._id }).populate('mealId').sort({ date: -1 }).limit(1);
+      // For compatibility with frontend, rename mealId to meal
+      const bookingsWithMeal = bookings.map(b => ({ ...b.toObject(), meal: b.mealId }));
+      return {
+        ...student.toObject(),
+        payments,
+        bookings: bookingsWithMeal
+      };
+    }));
+    
     const total = await User.countDocuments(query);
     
     res.json({
-      students,
+      students: studentsWithDetails,
       totalPages: Math.ceil(total / limit),
       currentPage: page,
       total

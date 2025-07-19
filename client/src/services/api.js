@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = import.meta.env.VITE_API_URL || (import.meta.env.PROD ? 'https://your-backend-url.vercel.app/api' : 'http://localhost:5000/api');
 
 // Create axios instance
 const api = axios.create({
@@ -31,7 +31,11 @@ api.interceptors.response.use(
     if (error.response?.status === 401) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Only redirect if not already on a public page
+      const publicPaths = ['/', '/login', '/register'];
+      if (!publicPaths.includes(window.location.pathname)) {
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
@@ -45,6 +49,10 @@ export const authAPI = {
   updateProfile: (profileData) => api.put('/auth/profile', profileData),
   changePassword: (passwordData) => api.put('/auth/change-password', passwordData),
   resetPassword: (email) => api.post('/auth/reset-password', { email }),
+  updateRole: (role) => api.put('/auth/update-role', { role }),
+  getPendingHeadStaff: () => api.get('/auth/pending-headstaff'),
+  approveHeadStaff: (userId) => api.post(`/auth/approve-headstaff/${userId}`),
+  rejectHeadStaff: (userId, reason) => api.post(`/auth/reject-headstaff/${userId}`, { reason }),
 };
 
 // Meals API
@@ -57,20 +65,26 @@ export const mealsAPI = {
   getByDate: (date) => api.get(`/meals/date/${date}`),
   getByType: (type) => api.get(`/meals/type/${type}`),
   book: (mealId, bookingData) => api.post(`/meals/book/${mealId}`, bookingData),
-  cancelBooking: (bookingId) => api.put(`/meals/cancel-booking/${bookingId}`),
   getMyBookings: () => api.get('/meals/my-bookings'),
   getStats: () => api.get('/meals/stats'),
+  createDefaultWeek: () => api.post('/meals/create-default-week'),
+  getMealsForNext7Days: () => api.get('/meals/next-7-days'),
 };
 
 // Bookings API
 export const bookingsAPI = {
   create: (bookingData) => api.post('/bookings', bookingData),
+  createDayBooking: (date, specialRequests) => api.post('/bookings/day', { date, specialRequests }),
   getAll: (params) => api.get('/bookings', { params }),
   update: (id, bookingData) => api.put(`/bookings/${id}`, bookingData),
   delete: (id) => api.delete(`/bookings/${id}`),
   getByDate: (date) => api.get(`/bookings/date/${date}`),
   getByUser: () => api.get('/bookings/my-bookings'),
+  getDayBookingsByUser: () => api.get('/bookings/my-day-bookings'),
   markAsConsumed: (id) => api.put(`/bookings/${id}/consume`),
+  bookTodayFromPlan: () => api.post('/bookings/book-today-from-plan'),
+  bookWeekFromPlan: () => api.post('/bookings/book-week-from-plan'),
+  getRecentWithPayments: () => api.get('/bookings/recent-with-payments'),
 };
 
 // Payments API
@@ -83,6 +97,7 @@ export const paymentsAPI = {
   getStats: () => api.get('/payments/stats'),
   process: (paymentData) => api.post('/payments/process', paymentData),
   generateInvoice: (id) => api.get(`/payments/invoice/${id}`),
+  createMealPayment: (data) => api.post('/payments', data),
 };
 
 // Feedback API
@@ -93,7 +108,24 @@ export const feedbackAPI = {
   delete: (id) => api.delete(`/feedback/${id}`),
   getByUser: () => api.get('/feedback/my-feedback'),
   getStats: () => api.get('/feedback/stats'),
-  respond: (id, response) => api.put(`/feedback/${id}/respond`, { adminResponse: response }),
+  respond: (id, responseData) => api.put(`/feedback/${id}/respond`, responseData),
+  
+  // Admin endpoints
+  getUnreadCountAdmin: () => api.get('/feedback/unread-count-admin'),
+  markAsReadAdmin: (id) => api.put(`/feedback/${id}/mark-read-admin`),
+  markMultipleAsReadAdmin: (feedbackIds) => api.post('/feedback/mark-multiple-read-admin', { feedbackIds }),
+  
+  // Staff endpoints
+  getAllStaff: (params) => api.get('/feedback/staff', { params }),
+  getStatsStaff: () => api.get('/feedback/staff/stats'),
+  getUnreadCountStaff: () => api.get('/feedback/unread-count-staff'),
+  respondStaff: (id, responseData) => api.put(`/feedback/staff/${id}/respond`, responseData),
+  markAsReadStaff: (id) => api.put(`/feedback/staff/${id}/mark-read-staff`),
+  markMultipleAsReadStaff: (feedbackIds) => api.post('/feedback/staff/mark-multiple-read-staff', { feedbackIds }),
+  
+  // Student endpoints
+  getUnreadCountStudent: () => api.get('/feedback/unread-count-student'),
+  markAsReadStudent: (id) => api.put(`/feedback/${id}/mark-read-student`)
 };
 
 // Students API (Admin only)
@@ -117,6 +149,26 @@ export const aiAPI = {
 // Health check
 export const healthAPI = {
   check: () => api.get('/health'),
+};
+
+// Staff API (Admin only)
+export const staffAPI = {
+  getAll: () => api.get('/auth/staff'),
+  updateStaff: (id, staffData) => api.put(`/auth/staff/${id}`, staffData),
+  markSalaryPaid: (id, amount) => api.post(`/auth/staff/${id}/pay-salary`, { amount }),
+  getAttendance: (month, year) => api.get('/auth/staff-attendance', { params: { month, year } }),
+  updateAttendance: (id, date, present) => api.patch(`/auth/staff/${id}/attendance`, { date, present }),
+  getMyAttendance: (month, year) => api.get('/auth/my-attendance', { params: { month, year } }),
+};
+
+export const weeklyMealPlanAPI = {
+  getWeeklyPlan: () => api.get('/meals/weekly-plan'),
+  updateWeeklyPlan: (meals) => api.put('/meals/weekly-plan', { meals }),
+};
+
+export const expenseAPI = {
+  addExpense: (data) => api.post('/meals/expenses', data),
+  getExpenses: (params) => api.get('/meals/expenses', { params }),
 };
 
 export default api;

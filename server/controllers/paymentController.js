@@ -4,19 +4,37 @@ const Booking = require('../models/Booking');
 
 exports.createPayment = async (req, res) => {
   try {
-    const { userId, amount, paymentType, dueDate, month, year, description } = req.body;
-    
+    const { amount, paymentType, dueDate, month, year, description, mealId, transactionId, paymentMethod, status, bookingId } = req.body;
+    // Ensure dueDate is set and required
+    if (!dueDate) {
+      return res.status(400).json({ error: 'dueDate (meal day) is required for payment.' });
+    }
     const payment = await Payment.create({
-      userId,
+      userId: req.user.userId, // Use authenticated user's ID
       amount,
-      paymentType,
+      paymentType: paymentType || (mealId ? 'daily' : undefined),
       dueDate: new Date(dueDate),
-      month,
-      year,
-      description
+      month: month || (dueDate ? new Date(dueDate).getMonth() + 1 : new Date().getMonth() + 1),
+      year: year || (dueDate ? new Date(dueDate).getFullYear() : new Date().getFullYear()),
+      description,
+      transactionId,
+      paymentMethod,
+      status: status || 'pending', // allow pending or completed
+      mealId,
+      bookingId
     });
+
+    // Always update related booking(s) to 'booked' after payment
+    const userId = req.user.userId;
+    if (bookingId) {
+      await Booking.findByIdAndUpdate(bookingId, { status: 'booked', price: amount });
+    } else if (mealId && userId && dueDate) {
+      await Booking.updateMany({ mealId, userId, date: new Date(dueDate) }, { status: 'booked', price: amount });
+    }
     
     res.status(201).json(payment);
+    const io = req.app.get('io');
+    if (io) io.emit('paymentUpdate', { payment });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -69,8 +87,19 @@ exports.updatePayment = async (req, res) => {
     if (!payment) {
       return res.status(404).json({ error: 'Payment not found' });
     }
+
+    // If payment is now completed, update related booking(s) to 'booked'
+    if (status === 'completed') {
+      if (payment.bookingId) {
+        await Booking.findByIdAndUpdate(payment.bookingId, { status: 'booked' });
+      } else if (payment.mealId && payment.userId && payment.dueDate) {
+        await Booking.updateMany({ mealId: payment.mealId, userId: payment.userId, date: payment.dueDate }, { status: 'booked' });
+      }
+    }
     
     res.json(payment);
+    const io = req.app.get('io');
+    if (io) io.emit('paymentUpdate', { payment });
   } catch (err) {
     res.status(400).json({ error: err.message });
   }
@@ -93,8 +122,12 @@ exports.getPaymentsByUser = async (req, res) => {
   try {
     const payments = await Payment.find({ userId: req.user.userId })
       .sort({ createdAt: -1 });
-    
-    res.json(payments);
+    // Always include dueDate in the response
+    const paymentsWithDueDate = payments.map(p => ({
+      ...p.toObject(),
+      dueDate: p.dueDate
+    }));
+    res.json(paymentsWithDueDate);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -105,18 +138,18 @@ exports.getPaymentStats = async (req, res) => {
     const totalPayments = await Payment.countDocuments();
     const pendingPayments = await Payment.countDocuments({ status: 'pending' });
     const completedPayments = await Payment.countDocuments({ status: 'completed' });
+    const paymentsForStats = await Payment.find({ status: { $in: ['completed', 'paid'] } });
+    console.log('Payments included in stats:', paymentsForStats.map(p => ({ _id: p._id, amount: p.amount, status: p.status }))); 
     const totalAmount = await Payment.aggregate([
-      { $match: { status: 'completed' } },
+      { $match: { status: { $in: ['completed', 'paid'] } } },
       { $group: { _id: null, total: { $sum: '$amount' } } }
     ]);
-    
     const monthlyStats = await Payment.aggregate([
-      { $match: { status: 'completed' } },
+      { $match: { status: { $in: ['completed', 'paid'] } } },
       { $group: { _id: { month: '$month', year: '$year' }, total: { $sum: '$amount' } } },
       { $sort: { '_id.year': -1, '_id.month': -1 } },
       { $limit: 12 }
     ]);
-    
     res.json({
       totalPayments,
       pendingPayments,
