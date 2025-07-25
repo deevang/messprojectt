@@ -15,7 +15,12 @@ dotenv.config();
 const http = require('http');
 const socketIo = require('socket.io');
 const server = http.createServer(app);
-const io = socketIo(server, { cors: { origin: '*' } });
+const io = socketIo(server, { 
+  cors: { 
+    origin: process.env.CLIENT_URL || 'http://localhost:5173', 
+    methods: ['GET', 'POST', 'PUT', 'DELETE'] 
+  } 
+});
 app.set('io', io);
 
 // Passport session and initialization
@@ -37,7 +42,10 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const { verifyToken } = require('./middleware/authMiddleware');
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: process.env.CLIENT_URL || 'http://localhost:5173',
+  credentials: true
+}));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
