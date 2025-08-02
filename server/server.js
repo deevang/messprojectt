@@ -37,7 +37,14 @@ const notificationRoutes = require('./routes/notificationRoutes');
 const { verifyToken } = require('./middleware/authMiddleware');
 
 // Middleware
-app.use(cors());
+const corsOptions = {
+  origin: process.env.NODE_ENV === 'production' 
+    ? [process.env.CLIENT_URL || 'https://mess-management-client.onrender.com']
+    : ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true,
+  optionsSuccessStatus: 200
+};
+app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
