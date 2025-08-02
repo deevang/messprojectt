@@ -55,7 +55,8 @@ const MessWorkerDashboard = () => {
   }, []);
 
   useEffect(() => {
-    const socket = io('http://localhost:5000'); // adjust if backend runs elsewhere
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+    const socket = io(apiUrl); // adjust if backend runs elsewhere
     socket.on('paymentUpdate', () => {
       fetchRecentPayments();
       fetchRecentBookings();
