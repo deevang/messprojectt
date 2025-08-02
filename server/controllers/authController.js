@@ -27,7 +27,9 @@ async function sendVerificationEmail(user, req) {
 // Helper to send password reset email
 async function sendResetEmail(user, req) {
   const token = user.emailVerificationToken;
-  const resetUrl = `${process.env.FRONTEND_URL}/set-password?token=${token}`;
+  // Use CLIENT_URL for frontend URL, fallback to FRONTEND_URL, then localhost
+  const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
+  const resetUrl = `${frontendUrl}/set-password?token=${token}`;
   const nodemailer = require('nodemailer');
   const transporter = nodemailer.createTransport({
     service: 'gmail',

@@ -49,7 +49,8 @@ router.get('/google/callback',
       );
       console.log('Generated JWT token for user:', user.email);
       console.log('Token payload:', { userId: user._id, role: tokenRole });
-      const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+      // Use CLIENT_URL for frontend URL, fallback to FRONTEND_URL, then localhost
+      const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
       // If user has no password set, redirect to set-password page
       if (!user.password) {
         const redirectUrl = `${frontendUrl}/set-password?token=${token}`;
@@ -76,7 +77,8 @@ router.get('/google/callback',
 // Google OAuth failure handler
 router.get('/google/failure', (req, res) => {
   console.error('Google OAuth authentication failed');
-  const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+  // Use CLIENT_URL for frontend URL, fallback to FRONTEND_URL, then localhost
+  const frontendUrl = process.env.CLIENT_URL || process.env.FRONTEND_URL || 'http://localhost:5173';
   res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
 });
 
